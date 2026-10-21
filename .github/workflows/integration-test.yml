@@ -1,8 +1,8 @@
 name: Integration Tests
 
+# Live tests mutate a Jira/Confluence tenant and require separately configured
+# credentials. Keep them opt-in for the fork; ordinary CI uses mock servers.
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 permissions:

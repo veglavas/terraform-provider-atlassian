@@ -1,13 +1,13 @@
 # terraform-provider-atlassian
 
-[![Terraform Registry](https://img.shields.io/badge/terraform-registry-blueviolet)](https://registry.terraform.io/providers/lbajsarowicz/atlassian/latest)
-[![CI](https://github.com/lbajsarowicz/terraform-provider-atlassian/actions/workflows/ci.yml/badge.svg)](https://github.com/lbajsarowicz/terraform-provider-atlassian/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/lbajsarowicz/terraform-provider-atlassian)](https://go.dev/)
+[![Terraform Registry](https://img.shields.io/badge/terraform-registry-blueviolet)](https://registry.terraform.io/providers/veglavas/atlassian/latest)
+[![CI](https://github.com/veglavas/terraform-provider-atlassian/actions/workflows/ci.yml/badge.svg)](https://github.com/veglavas/terraform-provider-atlassian/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/veglavas/terraform-provider-atlassian)](https://go.dev/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 Terraform/OpenTofu provider for managing [Atlassian Cloud](https://www.atlassian.com/cloud) (Jira + Confluence) configuration as infrastructure as code. Supports projects, permission schemes, workflows, issue types, custom fields, screens, roles, and Confluence spaces — with full import and drift detection.
 
-**[View on Terraform Registry](https://registry.terraform.io/providers/lbajsarowicz/atlassian/latest)** — full documentation, installation instructions, and version history.
+Fork of [lbajsarowicz/terraform-provider-atlassian](https://github.com/lbajsarowicz/terraform-provider-atlassian), published as **`registry.terraform.io/veglavas/atlassian`**. Registry installation becomes available after the maintainer completes the [publishing setup](docs/publishing.md).
 
 ## Requirements
 
@@ -20,14 +20,26 @@ Terraform/OpenTofu provider for managing [Atlassian Cloud](https://www.atlassian
 terraform {
   required_providers {
     atlassian = {
-      source  = "lbajsarowicz/atlassian"
-      version = "~> 0.1"
+      source  = "registry.terraform.io/veglavas/atlassian"
+      version = "~> 0.1.3"
     }
   }
 }
 ```
 
-> **Note:** Terraform and OpenTofu resolve `lbajsarowicz/atlassian` to their respective registries automatically. Lock files will differ between the two tools because the signing chains are different.
+> Use the explicit `registry.terraform.io` hostname with both Terraform and OpenTofu so both tools install the same fork from Terraform Registry.
+
+For an existing configuration, update the source above, back up state, and migrate each shared state once (coordinate with your team):
+
+```bash
+terraform state replace-provider \
+  registry.terraform.io/lbajsarowicz/atlassian \
+  registry.terraform.io/veglavas/atlassian
+terraform init -upgrade
+terraform plan
+```
+
+Commit the updated `.terraform.lock.hcl` for reproducible team installs.
 
 ## Authentication
 
@@ -134,7 +146,7 @@ Then add to `~/.terraformrc` or `~/.tofurc`:
 ```hcl
 provider_installation {
   dev_overrides {
-    "registry.terraform.io/lbajsarowicz/atlassian" = "<output of: make install>"
+    "registry.terraform.io/veglavas/atlassian" = "<directory containing the installed provider binary>"
   }
   direct {}
 }
@@ -155,6 +167,10 @@ make lint              # Lint
 go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0
 tfplugindocs generate
 ```
+
+## Publishing
+
+See [Publishing the fork](docs/publishing.md) for signing keys, GitHub secrets, the first release, and automated subsequent releases.
 
 ## Contributing
 

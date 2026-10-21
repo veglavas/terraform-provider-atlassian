@@ -82,51 +82,68 @@ func (d *workflowDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	apiPath := fmt.Sprintf("/rest/api/3/workflow/search?workflowName=%s&expand=statuses", atlassian.QueryEscape(config.Name.ValueString()))
+	apiPath := fmt.Sprintf("/rest/api/3/workflows/search?queryString=%s", atlassian.QueryEscape(config.Name.ValueString()))
 
-	var searchResp workflowSearchResponse
-	statusCode, err := d.client.GetWithStatus(ctx, apiPath, &searchResp)
-	if err != nil {
-		resp.Diagnostics.AddError("Error reading workflow", err.Error())
-		return
+	var searchResp struct {
+		IsLast bool `json:"isLast"`
+		Total  int  `json:"total"`
+		Values []struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Statuses    []struct {
+				ID string `json:"statusReference"`
+			} `json:"statuses"`
+		} `json:"values"`
 	}
-
-	if statusCode == http.StatusNotFound {
-		resp.Diagnostics.AddError(
-			"Workflow not found",
-			fmt.Sprintf("No workflow found with name %q", config.Name.ValueString()),
-		)
-		return
-	}
-
-	// Find the workflow by name in the response
-	name := config.Name.ValueString()
-	for _, wf := range searchResp.Values {
-		if wf.ID.Name == name {
-			config.ID = types.StringValue(wf.ID.EntityID)
-			config.Description = types.StringValue(wf.Description)
-
-			// Use numeric status ID to be consistent with the resource's create path.
-			statusRefs := make([]string, len(wf.Statuses))
-			for i, s := range wf.Statuses {
-				statusRefs[i] = s.ID
-			}
-
-			statusList, diags := types.ListValueFrom(ctx, types.StringType, statusRefs)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-
-			config.Statuses = statusList
-
-			resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+	for startAt := 0; ; {
+		statusCode, err := d.client.GetWithStatus(ctx, fmt.Sprintf("%s&startAt=%d&maxResults=100", apiPath, startAt), &searchResp)
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading workflow", err.Error())
 			return
 		}
-	}
 
+		if statusCode == http.StatusNotFound {
+			resp.Diagnostics.AddError(
+				"Workflow not found",
+				fmt.Sprintf("No workflow found with name %q", config.Name.ValueString()),
+			)
+			return
+		}
+
+		// Find the workflow by name in the response
+		name := config.Name.ValueString()
+		for _, wf := range searchResp.Values {
+			if wf.Name == name {
+				config.ID = types.StringValue(wf.ID)
+				config.Description = types.StringValue(wf.Description)
+
+				// Use numeric status ID to be consistent with the resource's create path.
+				statusRefs := make([]string, len(wf.Statuses))
+				for i, s := range wf.Statuses {
+					statusRefs[i] = s.ID
+				}
+
+				statusList, diags := types.ListValueFrom(ctx, types.StringType, statusRefs)
+				resp.Diagnostics.Append(diags...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				config.Statuses = statusList
+
+				resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+				return
+			}
+		}
+
+		startAt += len(searchResp.Values)
+		if searchResp.IsLast || len(searchResp.Values) == 0 || startAt >= searchResp.Total {
+			break
+		}
+	}
 	resp.Diagnostics.AddError(
 		"Workflow not found",
-		fmt.Sprintf("No workflow found with name %q", name),
+		fmt.Sprintf("No workflow found with name %q", config.Name.ValueString()),
 	)
 }

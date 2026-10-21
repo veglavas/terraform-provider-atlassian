@@ -15,6 +15,11 @@ Manages a Jira Cloud workflow scheme.
 resource "atlassian_jira_workflow_scheme" "example" {
   name             = "Example Workflow Scheme"
   default_workflow = atlassian_jira_workflow.example.name
+
+  # When Jira requires migrations, supply explicit destinations by issue type:
+  # status_mappings = {
+  #   "10001" = { "10010" = "10020" }
+  # }
 }
 ```
 
@@ -30,6 +35,7 @@ resource "atlassian_jira_workflow_scheme" "example" {
 - `default_workflow` (String) The name of the default workflow for the scheme.
 - `description` (String) The description of the workflow scheme.
 - `issue_type_mappings` (Map of String) A map of issue type IDs to workflow names.
+- `status_mappings` (Map of Map of String) Explicit issue status migrations: issue type ID => old status ID => new status ID. No migration destinations are chosen automatically.
 
 ### Read-Only
 

@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -32,42 +31,17 @@ type workflowResource struct {
 }
 
 type workflowResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	Statuses    types.List   `tfsdk:"statuses"`
-}
-
-// API request/response types
-
-// workflowCreateRequest represents the POST /rest/api/3/workflow request body.
-// Uses the legacy (non-versioned) workflow API which accepts status IDs directly.
-type workflowCreateRequest struct {
-	Name        string                    `json:"name"`
-	Description string                    `json:"description,omitempty"`
-	Statuses    []workflowStatusCreateRef `json:"statuses"`
-	Transitions []workflowTransitionRef   `json:"transitions"`
-}
-
-type workflowStatusCreateRef struct {
-	ID string `json:"id"`
-}
-
-type workflowTransitionRef struct {
-	Name string `json:"name"`
-	To   string `json:"to"`
-	Type string `json:"type"`
-}
-
-// workflowCreateResponse represents the POST /rest/api/3/workflow response.
-// The old endpoint returns entityId at the top level (not nested under id).
-type workflowCreateResponse struct {
-	EntityID string `json:"entityId"`
-	Name     string `json:"name"`
+	ID             types.String `tfsdk:"id"`
+	Name           types.String `tfsdk:"name"`
+	Description    types.String `tfsdk:"description"`
+	Statuses       types.List   `tfsdk:"statuses"`
+	Transitions    types.Map    `tfsdk:"transitions"`
+	StatusMappings types.Map    `tfsdk:"status_mappings"`
 }
 
 type workflowAPIItem struct {
-	ID struct {
+	Definition workflowDefinition `json:"-"`
+	ID         struct {
 		Name     string `json:"name"`
 		EntityID string `json:"entityId"`
 	} `json:"id"`
@@ -78,18 +52,16 @@ type workflowAPIItem struct {
 	} `json:"statuses"`
 }
 
-type workflowSearchResponse struct {
-	Values []workflowAPIItem `json:"values"`
-}
-
 func (r *workflowResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_jira_workflow"
 }
 
 func (r *workflowResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a Jira Cloud workflow (structure only: name, description, statuses). Transitions are not managed in v1.",
+		Description: "Manages a Jira Cloud workflow. Description, statuses, and configured transitions update in place; unmanaged transitions and rules are preserved.",
 		Attributes: map[string]schema.Attribute{
+			"transitions":     workflowTransitionsSchema(),
+			"status_mappings": schema.MapAttribute{Optional: true, ElementType: types.StringType, Description: "Explicit old status ID to new status ID mappings for removed workflow statuses. Used as default migration mappings for all affected projects and issue types."},
 			"id": schema.StringAttribute{
 				Description: "The entity ID (UUID) of the workflow.",
 				Computed:    true,
@@ -105,21 +77,15 @@ func (r *workflowResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"description": schema.StringAttribute{
-				Description: "The description of the workflow. Changing this forces recreation of the resource.",
+				Description: "The description of the workflow. Updated in place.",
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString(""),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 			"statuses": schema.ListAttribute{
-				Description: "List of status reference UUIDs used by the workflow. Changing this forces recreation of the resource.",
+				Description: "Ordered list of existing Jira status IDs. Updated in place. Removing statuses requires explicit status_mappings destinations and compatible transitions.",
 				Required:    true,
 				ElementType: types.StringType,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplace(),
-				},
 			},
 		},
 	}
@@ -161,33 +127,27 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	statusRefs := make([]workflowStatusCreateRef, len(statusIDs))
-	for i, id := range statusIDs {
-		statusRefs[i] = workflowStatusCreateRef{ID: id}
+	body, err := r.workflowPayload(ctx, plan.Name.ValueString(), plan.Description.ValueString(), statusIDs, nil)
+	if err != nil {
+		resp.Diagnostics.AddError("Error preparing workflow", err.Error())
+		return
 	}
-
-	// The legacy workflow API requires at least one initial transition.
-	// Create an initial transition pointing to the first status.
-	transitions := []workflowTransitionRef{
-		{Name: "Create", To: statusIDs[0], Type: "initial"},
+	if err := applyWorkflowTransitions(ctx, body, plan.Transitions, types.MapNull(types.ObjectType{AttrTypes: workflowTransitionTypes})); err != nil {
+		resp.Diagnostics.AddError("Invalid transitions", err.Error())
+		return
 	}
-
-	body := workflowCreateRequest{
-		Name:        plan.Name.ValueString(),
-		Description: plan.Description.ValueString(),
-		Statuses:    statusRefs,
-		Transitions: transitions,
-	}
-
-	var result workflowCreateResponse
-	err := r.client.Post(ctx, "/rest/api/3/workflow", body, &result)
+	result, err := r.mutateWorkflow(ctx, "create", body)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating workflow", err.Error())
 		return
 	}
 
 	// Only take the ID from the response; preserve all other plan values.
-	plan.ID = types.StringValue(result.EntityID)
+	if len(result.Workflows) != 1 || definitionString(result.Workflows[0], "id") == "" {
+		resp.Diagnostics.AddError("Invalid create response", "Jira did not return a workflow ID. Check Jira before retrying to avoid duplicate creation.")
+		return
+	}
+	plan.ID = types.StringValue(definitionString(result.Workflows[0], "id"))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -214,14 +174,13 @@ func (r *workflowResource) Read(ctx context.Context, req resource.ReadRequest, r
 	state.Name = types.StringValue(found.ID.Name)
 	state.Description = types.StringValue(found.Description)
 
-	// Extract status IDs from the API response. Use the numeric ID (which
-	// matches what was sent to POST /rest/api/3/workflow on create) rather
-	// than StatusReference (a UUID assigned by the server).
+	// Company-managed workflow references are existing Jira status IDs.
 	statusRefs := make([]string, len(found.Statuses))
 	for i, s := range found.Statuses {
 		statusRefs[i] = s.ID
 	}
 
+	statusRefs = stableWorkflowIDs(ctx, state.Statuses, statusRefs)
 	statusList, diags := types.ListValueFrom(ctx, types.StringType, statusRefs)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -229,45 +188,82 @@ func (r *workflowResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	state.Statuses = statusList
+	state.Transitions, err = refreshWorkflowTransitions(ctx, state.Transitions, found.Definition)
+	if err != nil {
+		resp.Diagnostics.AddError("Error refreshing transitions", err.Error())
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// findWorkflowByID paginates the workflow search endpoint and returns the
-// workflow matching the given entity ID, or nil if not found.
-func (r *workflowResource) findWorkflowByID(ctx context.Context, entityID, name string) (*workflowAPIItem, error) {
-	// When the name is known, filter by it to reduce result set.
-	var apiPath string
-	if name != "" {
-		apiPath = fmt.Sprintf("/rest/api/3/workflow/search?workflowName=%s&expand=statuses",
-			atlassian.QueryEscape(name))
-	} else {
-		apiPath = "/rest/api/3/workflow/search?expand=statuses"
-	}
-
-	allValues, err := r.client.GetAllPages(ctx, apiPath)
-	if err != nil {
+// findWorkflowByID reads the complete definition by stable ID, including imports.
+func (r *workflowResource) findWorkflowByID(ctx context.Context, entityID, _ string) (*workflowAPIItem, error) {
+	// Resolve by immutable ID, never by the stale name in state.
+	definition, err := r.definition(ctx, entityID)
+	if err != nil || definition == nil {
 		return nil, err
 	}
-
-	for _, raw := range allValues {
-		var item workflowAPIItem
-		if err := json.Unmarshal(raw, &item); err != nil {
-			return nil, fmt.Errorf("unmarshaling workflow: %w", err)
-		}
-		if item.ID.EntityID == entityID {
-			return &item, nil
-		}
+	item := &workflowAPIItem{Definition: definition}
+	item.ID.EntityID = definitionString(definition, "id")
+	item.ID.Name = definitionString(definition, "name")
+	item.Description = definitionString(definition, "description")
+	var statuses []struct {
+		Reference string `json:"statusReference"`
 	}
-
-	return nil, nil
+	if err := json.Unmarshal(definition["statuses"], &statuses); err != nil {
+		return nil, fmt.Errorf("decoding workflow statuses: %w", err)
+	}
+	for _, status := range statuses {
+		item.Statuses = append(item.Statuses, struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}{ID: status.Reference})
+	}
+	return item, nil
 }
 
-func (r *workflowResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError(
-		"Update not supported",
-		"Jira workflows cannot be updated in v1. All fields are ForceNew.",
-	)
+func (r *workflowResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state workflowResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	current, err := r.definition(ctx, state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading workflow before update", err.Error())
+		return
+	}
+	if current == nil {
+		resp.Diagnostics.AddError("Workflow not found", "The workflow disappeared before update. Refresh state before retrying.")
+		return
+	}
+	var ids []string
+	resp.Diagnostics.Append(plan.Statuses.ElementsAs(ctx, &ids, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := requireRemovedWorkflowMappings(ctx, current, ids, plan.StatusMappings); err != nil {
+		resp.Diagnostics.AddError("Workflow migration mappings required", err.Error())
+		return
+	}
+	body, err := r.workflowPayload(ctx, plan.Name.ValueString(), plan.Description.ValueString(), ids, current)
+	if err == nil {
+		err = applyWorkflowStatusMappings(ctx, body, plan.StatusMappings)
+	}
+	if err == nil {
+		err = applyWorkflowTransitions(ctx, body, plan.Transitions, state.Transitions)
+	}
+	if err == nil {
+		_, err = r.mutateWorkflow(ctx, "update", body)
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Error updating workflow", err.Error())
+		return
+	}
+	plan.ID = state.ID
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *workflowResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

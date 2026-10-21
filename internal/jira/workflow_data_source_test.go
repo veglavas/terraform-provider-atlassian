@@ -1,7 +1,7 @@
 package jira_test
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -11,64 +11,23 @@ import (
 	"github.com/lbajsarowicz/terraform-provider-atlassian/internal/testutil"
 )
 
-func TestAccWorkflowDataSource_NotFoundByStatus(t *testing.T) {
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && r.URL.Path == "/rest/api/3/workflow/search" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer mockServer.Close()
-
-	t.Setenv("ATLASSIAN_URL", mockServer.URL)
-	t.Setenv("ATLASSIAN_USER", "test@test.com")
-	t.Setenv("ATLASSIAN_TOKEN", "test-token")
-
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testutil.ProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config:      `data "atlassian_jira_workflow" "test" { name = "NonExistentWorkflow" }`,
-				ExpectError: regexp.MustCompile("Workflow not found"),
-			},
-		},
-	})
-}
-
-func TestAccWorkflowDataSource_NotFoundByName(t *testing.T) {
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && r.URL.Path == "/rest/api/3/workflow/search" {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"values": []map[string]interface{}{
-					{
-						"id": map[string]string{
-							"name":     "Some Other Workflow",
-							"entityId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-						},
-						"description": "A different workflow",
-						"statuses":    []map[string]string{},
-					},
-				},
-			})
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer mockServer.Close()
-
-	t.Setenv("ATLASSIAN_URL", mockServer.URL)
-	t.Setenv("ATLASSIAN_USER", "test@test.com")
-	t.Setenv("ATLASSIAN_TOKEN", "test-token")
-
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testutil.ProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config:      `data "atlassian_jira_workflow" "test" { name = "NonExistentWorkflow" }`,
-				ExpectError: regexp.MustCompile("Workflow not found"),
-			},
-		},
-	})
+func TestAccWorkflowDataSource_NotFound(t *testing.T) {
+	for _, status := range []int{200, 404} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "GET" || r.URL.Path != "/rest/api/3/workflows/search" || r.URL.Query().Get("queryString") != "NonExistentWorkflow" || r.URL.Query().Get("startAt") != "0" {
+					t.Errorf("unexpected request %s %s", r.Method, r.URL)
+				}
+				w.WriteHeader(status)
+				if status == 200 {
+					fmt.Fprint(w, `{"values":[{"id":"other","name":"Other Workflow","statuses":[]}],"isLast":true}`)
+				}
+			}))
+			defer server.Close()
+			t.Setenv("ATLASSIAN_URL", server.URL)
+			t.Setenv("ATLASSIAN_USER", "test@test.com")
+			t.Setenv("ATLASSIAN_TOKEN", "test-token")
+			resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: testutil.ProtoV6ProviderFactories, Steps: []resource.TestStep{{Config: `data "atlassian_jira_workflow" "test" { name = "NonExistentWorkflow" }`, ExpectError: regexp.MustCompile("Workflow not found")}}})
+		})
+	}
 }

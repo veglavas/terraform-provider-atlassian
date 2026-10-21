@@ -3,6 +3,7 @@ package jira_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -13,6 +14,9 @@ import (
 
 func TestIntegrationProjectWorkflowSchemeResource_basic(t *testing.T) {
 	testutil.SkipIfNoAcc(t)
+	if os.Getenv("ATLASSIAN_TEST_FALLBACK_SCHEME_ID") == "" {
+		t.Skip("set ATLASSIAN_TEST_FALLBACK_SCHEME_ID for safe teardown")
+	}
 
 	rName := acctest.RandomWithPrefix("tf-acc-test")
 	projectKey := fmt.Sprintf("TFACC%s", acctest.RandStringFromCharSet(5, "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
@@ -42,6 +46,7 @@ func TestIntegrationProjectWorkflowSchemeResource_basic(t *testing.T) {
 				ImportState:                          true,
 				ImportStateIdFunc:                    testProjectWorkflowSchemeImportID,
 				ImportStateVerify:                    true,
+				ImportStateVerifyIgnore:              []string{"delete_workflow_scheme_id"},
 				ImportStateVerifyIdentifierAttribute: "project_id",
 			},
 		},
@@ -74,12 +79,13 @@ resource "atlassian_jira_workflow_scheme" "test" {
 resource "atlassian_jira_project_workflow_scheme" "test" {
   project_id         = atlassian_jira_project.test.id
   workflow_scheme_id = atlassian_jira_workflow_scheme.test.id
+  delete_workflow_scheme_id = %q
 }
-`, projectKey, name, leadAccountID, name+"-wf-scheme", testutil.RunID())
+`, projectKey, name, leadAccountID, name+"-wf-scheme", testutil.RunID(), os.Getenv("ATLASSIAN_TEST_FALLBACK_SCHEME_ID"))
 }
 
 func testCheckProjectWorkflowSchemeDestroyed(s *terraform.State) error {
-	// Delete reverts the project to the default workflow scheme and then
+	// Delete switches the project to the explicitly configured fallback and then
 	// the project itself is deleted. Nothing to verify — the association
 	// and both parent resources are gone after a full destroy.
 	return nil

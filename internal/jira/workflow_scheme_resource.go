@@ -36,6 +36,7 @@ type workflowSchemeResourceModel struct {
 	Description       types.String `tfsdk:"description"`
 	DefaultWorkflow   types.String `tfsdk:"default_workflow"`
 	IssueTypeMappings types.Map    `tfsdk:"issue_type_mappings"`
+	StatusMappings    types.Map    `tfsdk:"status_mappings"`
 }
 
 // workflowSchemeAPIResponse represents the Jira workflow scheme API response shape.
@@ -64,6 +65,7 @@ func (r *workflowSchemeResource) Schema(_ context.Context, _ resource.SchemaRequ
 	resp.Schema = schema.Schema{
 		Description: "Manages a Jira Cloud workflow scheme.",
 		Attributes: map[string]schema.Attribute{
+			"status_mappings": migrationMappingsSchema(),
 			"id": schema.StringAttribute{
 				Description: "The ID of the workflow scheme.",
 				Computed:    true,
@@ -220,47 +222,18 @@ func (r *workflowSchemeResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	body := workflowSchemeCreateRequest{
-		Name:        plan.Name.ValueString(),
-		Description: plan.Description.ValueString(),
-	}
-
-	if !plan.DefaultWorkflow.IsNull() && !plan.DefaultWorkflow.IsUnknown() {
-		body.DefaultWorkflow = plan.DefaultWorkflow.ValueString()
-	}
-
-	if !plan.IssueTypeMappings.IsNull() && !plan.IssueTypeMappings.IsUnknown() {
-		mappings := make(map[string]string)
-		resp.Diagnostics.Append(plan.IssueTypeMappings.ElementsAs(ctx, &mappings, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		body.IssueTypeMappings = mappings
-	}
-
-	var result workflowSchemeAPIResponse
-	apiPath := fmt.Sprintf("/rest/api/3/workflowscheme/%s", atlassian.PathEscape(state.ID.ValueString()))
-	err := r.client.Put(ctx, apiPath, body, &result)
+	err := updateModernScheme(ctx, r.client, state.ID.ValueString(), plan)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating workflow scheme", err.Error())
 		return
 	}
 
-	// ID carries forward from state (unchanged on update); preserve all plan values
-	// and resolve any Unknown computed fields using the server response.
 	plan.ID = state.ID
-
 	if plan.DefaultWorkflow.IsUnknown() {
-		plan.DefaultWorkflow = types.StringValue(result.DefaultWorkflow)
+		plan.DefaultWorkflow = state.DefaultWorkflow
 	}
-
 	if plan.IssueTypeMappings.IsUnknown() {
-		mappingsValue, diags := types.MapValueFrom(ctx, types.StringType, result.IssueTypeMappings)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		plan.IssueTypeMappings = mappingsValue
+		plan.IssueTypeMappings = state.IssueTypeMappings
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

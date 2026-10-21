@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -29,8 +30,11 @@ type projectWorkflowSchemeResource struct {
 }
 
 type projectWorkflowSchemeResourceModel struct {
-	ProjectID        types.String `tfsdk:"project_id"`
-	WorkflowSchemeID types.String `tfsdk:"workflow_scheme_id"`
+	ProjectID              types.String `tfsdk:"project_id"`
+	WorkflowSchemeID       types.String `tfsdk:"workflow_scheme_id"`
+	StatusMappings         types.Map    `tfsdk:"status_mappings"`
+	DeleteWorkflowSchemeID types.String `tfsdk:"delete_workflow_scheme_id"`
+	DeleteStatusMappings   types.Map    `tfsdk:"delete_status_mappings"`
 }
 
 // projectWorkflowSchemeListEntry represents a single entry in the
@@ -47,6 +51,9 @@ func (r *projectWorkflowSchemeResource) Schema(_ context.Context, _ resource.Sch
 	resp.Schema = schema.Schema{
 		Description: "Associates a Jira Cloud project with a workflow scheme.",
 		Attributes: map[string]schema.Attribute{
+			"status_mappings":           migrationMappingsSchema(),
+			"delete_status_mappings":    migrationMappingsSchema(),
+			"delete_workflow_scheme_id": schema.StringAttribute{Optional: true, Description: "Explicit scheme to switch to on destroy. If omitted, destroy only stops managing the association and leaves Jira unchanged."},
 			"project_id": schema.StringAttribute{
 				Description: "The ID of the project. Changing this forces recreation of the resource.",
 				Required:    true,
@@ -55,11 +62,8 @@ func (r *projectWorkflowSchemeResource) Schema(_ context.Context, _ resource.Sch
 				},
 			},
 			"workflow_scheme_id": schema.StringAttribute{
-				Description: "The ID of the workflow scheme to assign. Changing this forces recreation of the resource.",
+				Description: "The ID of the workflow scheme to assign. Updated in place, including projects with issues.",
 				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 		},
 	}
@@ -89,12 +93,7 @@ func (r *projectWorkflowSchemeResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	body := map[string]string{
-		"workflowSchemeId": plan.WorkflowSchemeID.ValueString(),
-		"projectId":        plan.ProjectID.ValueString(),
-	}
-
-	err := r.client.Put(ctx, "/rest/api/3/workflowscheme/project", body, nil)
+	err := r.switchScheme(ctx, plan.ProjectID.ValueString(), plan.WorkflowSchemeID.ValueString(), plan.StatusMappings)
 	if err != nil {
 		resp.Diagnostics.AddError("Error assigning workflow scheme to project", err.Error())
 		return
@@ -115,35 +114,48 @@ func (r *projectWorkflowSchemeResource) Read(ctx context.Context, req resource.R
 
 	// This endpoint returns at most one entry per project — no pagination needed.
 	var page atlassian.PageResponse
-	if err := r.client.Get(ctx, apiPath, &page); err != nil {
+	status, err := r.client.GetWithStatus(ctx, apiPath, &page)
+	if err != nil {
 		resp.Diagnostics.AddError("Error reading project workflow scheme", err.Error())
 		return
 	}
+	if status == http.StatusNotFound {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 
-	for _, raw := range page.Values {
+	if len(page.Values) > 1 {
+		resp.Diagnostics.AddError("Ambiguous project association", "Jira returned multiple workflow schemes for one project.")
+		return
+	}
+	if len(page.Values) == 1 {
+		raw := page.Values[0]
 		var entry projectWorkflowSchemeListEntry
 		if err := json.Unmarshal(raw, &entry); err != nil {
 			resp.Diagnostics.AddError("Error parsing project workflow scheme response", err.Error())
 			return
 		}
 		schemeIDStr := fmt.Sprintf("%d", entry.WorkflowScheme.ID)
-		if schemeIDStr == state.WorkflowSchemeID.ValueString() {
-			state.WorkflowSchemeID = types.StringValue(schemeIDStr)
-			resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-			return
-		}
+		state.WorkflowSchemeID = types.StringValue(schemeIDStr)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		return
 	}
 
 	// Association not found — remove from state.
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *projectWorkflowSchemeResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Both fields have RequiresReplace, so Update is never called.
-	resp.Diagnostics.AddError(
-		"Update not supported",
-		"Changing project_id or workflow_scheme_id requires replacing the resource.",
-	)
+func (r *projectWorkflowSchemeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan projectWorkflowSchemeResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.switchScheme(ctx, plan.ProjectID.ValueString(), plan.WorkflowSchemeID.ValueString(), plan.StatusMappings); err != nil {
+		resp.Diagnostics.AddError("Error switching project workflow scheme", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *projectWorkflowSchemeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -153,26 +165,21 @@ func (r *projectWorkflowSchemeResource) Delete(ctx context.Context, req resource
 		return
 	}
 
-	// The Jira API does not support removing a workflow scheme association.
-	// On destroy, revert the project to the default workflow scheme so that
-	// the custom scheme becomes inactive and can be deleted by Terraform.
-	const defaultWorkflowSchemeID = "10000"
-
-	body := map[string]string{
-		"workflowSchemeId": defaultWorkflowSchemeID,
-		"projectId":        state.ProjectID.ValueString(),
+	if state.DeleteWorkflowSchemeID.IsNull() {
+		resp.Diagnostics.AddWarning("Association retained", "No delete_workflow_scheme_id was configured. The project's workflow scheme is unchanged; Terraform only stops managing this association.")
+		return
 	}
-
-	err := r.client.Put(ctx, "/rest/api/3/workflowscheme/project", body, nil)
+	var project map[string]any
+	status, err := r.client.GetWithStatus(ctx, "/rest/api/3/project/"+atlassian.PathEscape(state.ProjectID.ValueString()), &project)
 	if err != nil {
-		// Tolerate failure (e.g. project deleted out-of-band); emit a warning
-		// so Terraform can still clean up state.
-		resp.Diagnostics.AddWarning(
-			"Could not revert workflow scheme to default",
-			fmt.Sprintf("Error reverting project %q to the default workflow scheme: %s. "+
-				"The project may have been deleted or the scheme association was already removed.",
-				state.ProjectID.ValueString(), err.Error()),
-		)
+		resp.Diagnostics.AddError("Error checking project", err.Error())
+		return
+	}
+	if status == http.StatusNotFound {
+		return
+	}
+	if err := r.switchScheme(ctx, state.ProjectID.ValueString(), state.DeleteWorkflowSchemeID.ValueString(), state.DeleteStatusMappings); err != nil {
+		resp.Diagnostics.AddError("Error reassigning workflow scheme on destroy", err.Error())
 	}
 }
 

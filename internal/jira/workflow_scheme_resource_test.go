@@ -76,6 +76,48 @@ func newWorkflowSchemeMockServer(state *workflowSchemeMockState) *httptest.Serve
 		w.Header().Set("Content-Type", "application/json")
 
 		switch {
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme/read":
+			current := state.apiResponse()
+			associations := []any{}
+			for issueType, name := range current["issueTypeMappings"].(map[string]string) {
+				associations = append(associations, map[string]any{"issueTypeIds": []string{issueType}, "workflow": map[string]string{"id": name}})
+			}
+			json.NewEncoder(w).Encode([]any{map[string]any{"id": "10000", "version": map[string]any{"id": "version", "versionNumber": 1}, "defaultWorkflow": map[string]any{"id": current["defaultWorkflow"]}, "workflowsForIssueTypes": associations}})
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflows":
+			var body struct {
+				Names []string `json:"workflowNames"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Names) != 1 {
+				w.WriteHeader(400)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]any{"workflows": []any{map[string]string{"id": body.Names[0], "name": body.Names[0]}}})
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme/update/mappings":
+			json.NewEncoder(w).Encode(map[string]any{"statusMappingsByIssueTypes": []any{}})
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme/update":
+			var body struct {
+				ID          string         `json:"id"`
+				Version     map[string]any `json:"version"`
+				Name        string         `json:"name"`
+				Description string         `json:"description"`
+				Default     string         `json:"defaultWorkflowId"`
+				Workflows   []struct {
+					IDs      []string `json:"issueTypeIds"`
+					Workflow string   `json:"workflowId"`
+				} `json:"workflowsForIssueTypes"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID != "10000" || body.Version["id"] != "version" {
+				w.WriteHeader(400)
+				return
+			}
+			mappings := map[string]string{}
+			for _, workflow := range body.Workflows {
+				for _, id := range workflow.IDs {
+					mappings[id] = workflow.Workflow
+				}
+			}
+			state.set(fixedID, body.Name, body.Description, body.Default, mappings)
+			w.WriteHeader(200)
 		// Create
 		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme":
 			var body struct {
@@ -310,10 +352,10 @@ func newProjectWorkflowSchemeMockServer(projectID, schemeID string) *httptest.Se
 		w.Header().Set("Content-Type", "application/json")
 
 		switch {
-		// Assign scheme to project
-		case r.Method == "PUT" && r.URL.Path == "/rest/api/3/workflowscheme/project":
+		// Switch the project, without deleting or recreating the association.
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme/project/switch":
 			var body struct {
-				WorkflowSchemeID string `json:"workflowSchemeId"`
+				WorkflowSchemeID string `json:"targetSchemeId"`
 				ProjectID        string `json:"projectId"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -329,6 +371,17 @@ func newProjectWorkflowSchemeMockServer(projectID, schemeID string) *httptest.Se
 			mu.Unlock()
 			w.WriteHeader(http.StatusNoContent)
 
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme/read":
+			var body struct {
+				IDs []string `json:"workflowSchemeIds"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.IDs) != 1 {
+				w.WriteHeader(400)
+				return
+			}
+			json.NewEncoder(w).Encode([]any{map[string]any{"id": body.IDs[0], "defaultWorkflow": map[string]string{"id": "workflow"}, "workflowsForIssueTypes": []any{}}})
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflowscheme/update/mappings":
+			json.NewEncoder(w).Encode(map[string]any{"statusMappingsByIssueTypes": []any{}})
 		// Read: list workflow schemes for project
 		case r.Method == "GET" && r.URL.Path == "/rest/api/3/workflowscheme/project":
 			qProjectID := r.URL.Query().Get("projectId")
@@ -393,6 +446,13 @@ func TestAccProjectWorkflowSchemeResource_basic(t *testing.T) {
 				ImportStateId:                        projectID,
 				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "project_id",
+			},
+			{
+				Config: fmt.Sprintf(`resource "atlassian_jira_project_workflow_scheme" "test" {
+ project_id = %q
+ workflow_scheme_id = "10002"
+}`, projectID),
+				Check: resource.TestCheckResourceAttr("atlassian_jira_project_workflow_scheme.test", "workflow_scheme_id", "10002"),
 			},
 		},
 	})
@@ -459,7 +519,8 @@ func TestAccProjectWorkflowSchemeResource_notFound(t *testing.T) {
 				),
 			},
 			{
-				// Simulate out-of-band removal
+				// Simulate out-of-band removal; do not recreate a missing project.
+				PlanOnly: true,
 				PreConfig: func() {
 					mu.Lock()
 					found = false

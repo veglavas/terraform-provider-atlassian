@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.2...v0.1.3) (2026-10-23)
+
+### Bug Fixes
+
+* Use the modern Jira workflow creation API and manage workflows and scheme migrations in place.
+* Prepare fork publishing as `registry.terraform.io/veglavas/atlassian` with GitHub Actions release secrets.
+
 ## [0.1.2](https://github.com/lbajsarowicz/terraform-provider-atlassian/compare/v0.1.1...v0.1.2) (2026-04-04)
 
 

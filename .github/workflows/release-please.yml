@@ -14,16 +14,9 @@ jobs:
     name: Release Please
     runs-on: ubuntu-latest
     steps:
-      - name: Load secrets from 1Password
-        uses: 1password/load-secrets-action@v2
-        with:
-          export-env: true
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          RELEASE_TOKEN: op://terraform-provider-atlassian/terraform-atlassian-release-token/token
-
       - uses: googleapis/release-please-action@v4
         with:
-          token: ${{ env.RELEASE_TOKEN }}
+          # A PAT is required so the generated tag triggers release.yml.
+          token: ${{ secrets.RELEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

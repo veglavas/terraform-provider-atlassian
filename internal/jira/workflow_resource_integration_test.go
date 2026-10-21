@@ -30,16 +30,14 @@ func sweepWorkflows(_ string) error {
 
 	ctx := context.Background()
 
-	allValues, err := client.GetAllPages(ctx, "/rest/api/3/workflow/search")
+	allValues, err := client.GetAllPages(ctx, "/rest/api/3/workflows/search")
 	if err != nil {
 		return fmt.Errorf("listing workflows for sweep: %w", err)
 	}
 
 	for _, raw := range allValues {
 		var wf struct {
-			ID struct {
-				EntityID string `json:"entityId"`
-			} `json:"id"`
+			ID   string `json:"id"`
 			Name string `json:"name"`
 		}
 		if err := json.Unmarshal(raw, &wf); err != nil {
@@ -49,10 +47,10 @@ func sweepWorkflows(_ string) error {
 			continue
 		}
 
-		delPath := fmt.Sprintf("/rest/api/3/workflow/%s", atlassian.PathEscape(wf.ID.EntityID))
+		delPath := fmt.Sprintf("/rest/api/3/workflow/%s", atlassian.PathEscape(wf.ID))
 		_, delErr := client.DeleteWithStatus(ctx, delPath)
 		if delErr != nil {
-			fmt.Printf("[WARN] Failed to delete workflow %q (%s): %s\n", wf.Name, wf.ID.EntityID, delErr)
+			fmt.Printf("[WARN] Failed to delete workflow %q (%s): %s\n", wf.Name, wf.ID, delErr)
 		}
 	}
 
@@ -136,19 +134,15 @@ func testCheckWorkflowDestroyed(s *terraform.State) error {
 			continue
 		}
 		var result struct {
-			Values []struct {
-				ID struct {
-					EntityID string `json:"entityId"`
-				} `json:"id"`
-			} `json:"values"`
+			Workflows []struct {
+				ID string `json:"id"`
+			} `json:"workflows"`
 		}
-		searchPath := fmt.Sprintf("/rest/api/3/workflow/search?workflowName=%s",
-			atlassian.QueryEscape(rs.Primary.Attributes["name"]))
-		if err := client.Get(ctx, searchPath, &result); err != nil {
+		if err := client.Post(ctx, "/rest/api/3/workflows", map[string]any{"workflowIds": []string{rs.Primary.ID}}, &result); err != nil {
 			return fmt.Errorf("error checking workflow %s destruction: %w", rs.Primary.ID, err)
 		}
-		for _, wf := range result.Values {
-			if wf.ID.EntityID == rs.Primary.ID {
+		for _, wf := range result.Workflows {
+			if wf.ID == rs.Primary.ID {
 				return fmt.Errorf("workflow %s still exists", rs.Primary.ID)
 			}
 		}

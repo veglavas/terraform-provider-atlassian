@@ -2,21 +2,33 @@
 page_title: "atlassian_jira_workflow Resource"
 subcategory: ""
 description: |-
-    Manages a Jira Cloud workflow (structure only: name, description, statuses). Transitions are not managed in v1.
+    Manages a Jira Cloud workflow. Description, statuses, and configured transitions update in place; unmanaged transitions and rules are preserved.
 ---
 
 # atlassian_jira_workflow (Resource)
 
-Manages a Jira Cloud workflow (structure only: name, description, statuses). Transitions are not managed in v1.
+Manages a Jira Cloud workflow. Description, statuses, and configured transitions update in place; unmanaged transitions and rules are preserved.
 
 ## Example Usage
 
 ```terraform
 resource "atlassian_jira_workflow" "example" {
-  name = "Example Workflow"
-  statuses = [
-    atlassian_jira_status.example.id,
-  ]
+  name        = "Example Workflow"
+  description = "Description and transitions can be updated in place"
+  statuses    = [atlassian_jira_status.example.id]
+
+  transitions = {
+    "1" = {
+      name         = "Create"
+      type         = "INITIAL"
+      to_status_id = atlassian_jira_status.example.id
+    }
+    "11" = {
+      name         = "Reopen"
+      type         = "GLOBAL"
+      to_status_id = atlassian_jira_status.example.id
+    }
+  }
 }
 ```
 
@@ -26,12 +38,27 @@ resource "atlassian_jira_workflow" "example" {
 ### Required
 
 - `name` (String) The name of the workflow. Changing this forces recreation of the resource.
-- `statuses` (List of String) List of status reference UUIDs used by the workflow. Changing this forces recreation of the resource.
+- `statuses` (List of String) Ordered list of existing Jira status IDs. Updated in place. Removing statuses requires explicit status_mappings destinations and compatible transitions.
 
 ### Optional
 
-- `description` (String) The description of the workflow. Changing this forces recreation of the resource.
+- `description` (String) The description of the workflow. Updated in place.
+- `status_mappings` (Map of String) Explicit old status ID to new status ID mappings for removed workflow statuses. Used as default migration mappings for all affected projects and issue types.
+- `transitions` (Attributes Map) Transitions managed by Terraform, keyed by stable numeric transition ID. Omit to preserve all existing transitions. Only listed transitions are managed; removing a previously configured entry deletes that transition. Rules and properties on existing transitions are preserved. (see [below for nested schema](#nestedatt--transitions))
 
 ### Read-Only
 
 - `id` (String) The entity ID (UUID) of the workflow.
+
+<a id="nestedatt--transitions"></a>
+### Nested Schema for `transitions`
+
+Required:
+
+- `name` (String)
+- `to_status_id` (String)
+- `type` (String) INITIAL, GLOBAL, or DIRECTED.
+
+Optional:
+
+- `from_status_ids` (List of String) Source status IDs for DIRECTED transitions.

@@ -13,8 +13,19 @@ Associates a Jira Cloud project with a workflow scheme.
 
 ```terraform
 resource "atlassian_jira_project_workflow_scheme" "example" {
-  project_id        = atlassian_jira_project.example.id
+  project_id         = atlassian_jira_project.example.id
   workflow_scheme_id = atlassian_jira_workflow_scheme.example.id
+
+  # Populated projects are supported. Explicit migration destinations, if needed:
+  # status_mappings = {
+  #   "10001" = { "10010" = "10020" }
+  # }
+
+  # Optional: explicitly reassign on destroy. Otherwise retain the association.
+  # delete_workflow_scheme_id = "your-fallback-scheme-id"
+  # delete_status_mappings = {
+  #   "10001" = { "10020" = "10010" }
+  # }
 }
 ```
 
@@ -24,4 +35,10 @@ resource "atlassian_jira_project_workflow_scheme" "example" {
 ### Required
 
 - `project_id` (String) The ID of the project. Changing this forces recreation of the resource.
-- `workflow_scheme_id` (String) The ID of the workflow scheme to assign. Changing this forces recreation of the resource.
+- `workflow_scheme_id` (String) The ID of the workflow scheme to assign. Updated in place, including projects with issues.
+
+### Optional
+
+- `delete_status_mappings` (Map of Map of String) Explicit issue status migrations: issue type ID => old status ID => new status ID. No migration destinations are chosen automatically.
+- `delete_workflow_scheme_id` (String) Explicit scheme to switch to on destroy. If omitted, destroy only stops managing the association and leaves Jira unchanged.
+- `status_mappings` (Map of Map of String) Explicit issue status migrations: issue type ID => old status ID => new status ID. No migration destinations are chosen automatically.

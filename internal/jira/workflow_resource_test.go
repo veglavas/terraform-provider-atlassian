@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -17,6 +19,7 @@ import (
 const workflowFixedEntityID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 type workflowMockState struct {
+	creations   atomic.Int32
 	mu          sync.Mutex
 	entityID    string
 	name        string
@@ -73,34 +76,58 @@ func (s *workflowMockState) apiItem() map[string]interface{} {
 	}
 }
 
+func (s *workflowMockState) modernItem() map[string]any {
+	id, name, description, ids := s.get()
+	statuses := make([]map[string]any, len(ids))
+	for i, id := range ids {
+		statuses[i] = map[string]any{"statusReference": id, "properties": map[string]string{}}
+	}
+	return map[string]any{"id": id, "name": name, "description": description, "statuses": statuses, "transitions": []any{}, "version": map[string]any{"id": "version-id", "versionNumber": 1}}
+}
+
 func newWorkflowMockServer(state *workflowMockState) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflow":
-			var body struct {
-				Name        string `json:"name"`
-				Description string `json:"description"`
-				Statuses    []struct {
-					ID string `json:"id"`
-				} `json:"statuses"`
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/rest/api/3/status/"):
+			id := strings.TrimPrefix(r.URL.Path, "/rest/api/3/status/")
+			json.NewEncoder(w).Encode(map[string]any{"id": id, "name": "Status " + id, "statusCategory": map[string]string{"key": "new"}})
+		case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/validation"):
+			json.NewEncoder(w).Encode(map[string]any{"errors": []any{}})
+		case r.Method == "POST" && (r.URL.Path == "/rest/api/3/workflows/create" || r.URL.Path == "/rest/api/3/workflows/update"):
+			if r.URL.Path == "/rest/api/3/workflows/create" {
+				state.creations.Add(1)
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
+			var body struct {
+				Workflows []struct {
+					Name        string `json:"name"`
+					Description string `json:"description"`
+					Statuses    []struct {
+						ID string `json:"statusReference"`
+					} `json:"statuses"`
+				} `json:"workflows"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Workflows) != 1 {
+				w.WriteHeader(400)
 				return
 			}
-			statusIDs := make([]string, len(body.Statuses))
-			for i, s := range body.Statuses {
-				statusIDs[i] = s.ID
+			workflow := body.Workflows[0]
+			if workflow.Name == "" {
+				_, workflow.Name, _, _ = state.get()
 			}
-			state.set(workflowFixedEntityID, body.Name, body.Description, statusIDs)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"entityId": workflowFixedEntityID,
-				"name":     body.Name,
-			})
-
-		case r.Method == "GET" && r.URL.Path == "/rest/api/3/workflow/search":
+			ids := make([]string, len(workflow.Statuses))
+			for i, s := range workflow.Statuses {
+				ids[i] = s.ID
+			}
+			state.set(workflowFixedEntityID, workflow.Name, workflow.Description, ids)
+			json.NewEncoder(w).Encode(map[string]any{"workflows": []any{state.modernItem()}})
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflows":
+			id, _, _, _ := state.get()
+			items := []any{}
+			if id != "" {
+				items = append(items, state.modernItem())
+			}
+			json.NewEncoder(w).Encode(map[string]any{"workflows": items})
+		case r.Method == "GET" && r.URL.Path == "/rest/api/3/workflows/search":
 			entityID, _, _, _ := state.get()
 			if entityID == "" {
 				w.Header().Set("Content-Type", "application/json")
@@ -111,7 +138,7 @@ func newWorkflowMockServer(state *workflowMockState) *httptest.Server {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"values": []interface{}{state.apiItem()},
+				"values": []interface{}{state.modernItem()},
 			})
 
 		case r.Method == "DELETE":
@@ -162,6 +189,23 @@ func TestAccWorkflowResource_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("atlassian_jira_workflow.test", "statuses.1", "status-uuid-2"),
 				),
 			},
+			{
+				Config: fmt.Sprintf(`resource "atlassian_jira_workflow" "test" {
+  name = %q
+  description = "Updated in place"
+  statuses = ["status-uuid-1", "status-uuid-2", "status-uuid-3"]
+}`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("atlassian_jira_workflow.test", "description", "Updated in place"),
+					resource.TestCheckResourceAttr("atlassian_jira_workflow.test", "statuses.#", "3"),
+					func(_ *terraform.State) error {
+						if state.creations.Load() != 1 {
+							return fmt.Errorf("workflow was replaced")
+						}
+						return nil
+					},
+				),
+			},
 		},
 	})
 }
@@ -172,34 +216,16 @@ func TestAccWorkflowResource_Read_NotFound(t *testing.T) {
 
 	var readCount int
 	var mu sync.Mutex
+	delegate := newWorkflowMockServer(state)
+	defer delegate.Close()
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rest/api/3/workflows" {
+			delegate.Config.Handler.ServeHTTP(w, r)
+			return
+		}
 		switch {
-		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflow":
-			var body struct {
-				Name        string `json:"name"`
-				Description string `json:"description"`
-				Statuses    []struct {
-					ID string `json:"id"`
-				} `json:"statuses"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			statusIDs := make([]string, len(body.Statuses))
-			for i, s := range body.Statuses {
-				statusIDs[i] = s.ID
-			}
-			state.set(workflowFixedEntityID, body.Name, body.Description, statusIDs)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"entityId": workflowFixedEntityID,
-				"name":     body.Name,
-			})
-
-		case r.Method == "GET" && r.URL.Path == "/rest/api/3/workflow/search":
+		case r.Method == "POST" && r.URL.Path == "/rest/api/3/workflows":
 			mu.Lock()
 			readCount++
 			current := readCount
@@ -209,13 +235,13 @@ func TestAccWorkflowResource_Read_NotFound(t *testing.T) {
 				// First read: return the workflow
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"values": []interface{}{state.apiItem()},
+					"workflows": []interface{}{state.modernItem()},
 				})
 			} else {
 				// Subsequent reads: return empty (workflow deleted out-of-band)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"values": []interface{}{},
+					"workflows": []interface{}{},
 				})
 			}
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.2...v0.1.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* manage Jira workflows and scheme migrations in place ([5760f7d](https://github.com/veglavas/terraform-provider-atlassian/commit/5760f7d162b8b0621d85803462e92ef11b593b57))
+
 ## [0.1.2](https://github.com/lbajsarowicz/terraform-provider-atlassian/compare/v0.1.1...v0.1.2) (2026-04-04)
 
 

@@ -181,13 +181,31 @@ func updateModernScheme(ctx context.Context, c *atlassian.Client, id string, pla
 		if d := plan.IssueTypeMappings.ElementsAs(ctx, &names, false); d.HasError() {
 			return fmt.Errorf("invalid issue type mappings: %s", d)
 		}
-		associations = []schemeWorkflowAssociation{}
+		// Jira requires a single association entry per workflow, not per issue
+		// type. Group by resolved ID and sort for a deterministic request.
+		byWorkflow := map[string][]string{}
+		resolvedNames := map[string]string{}
 		for issueType, name := range names {
-			workflowID, err := workflowIDByName(ctx, c, name)
-			if err != nil {
-				return err
+			workflowID, ok := resolvedNames[name]
+			if !ok {
+				workflowID, err = workflowIDByName(ctx, c, name)
+				if err != nil {
+					return err
+				}
+				resolvedNames[name] = workflowID
 			}
-			associations = append(associations, schemeWorkflowAssociation{IssueTypeIDs: []string{issueType}, WorkflowID: workflowID})
+			byWorkflow[workflowID] = append(byWorkflow[workflowID], issueType)
+		}
+		workflowIDs := make([]string, 0, len(byWorkflow))
+		for workflowID := range byWorkflow {
+			workflowIDs = append(workflowIDs, workflowID)
+		}
+		sort.Strings(workflowIDs)
+		associations = make([]schemeWorkflowAssociation, 0, len(workflowIDs))
+		for _, workflowID := range workflowIDs {
+			issueTypes := byWorkflow[workflowID]
+			sort.Strings(issueTypes)
+			associations = append(associations, schemeWorkflowAssociation{IssueTypeIDs: issueTypes, WorkflowID: workflowID})
 		}
 	}
 	mappings, err := prepareSchemeMappings(ctx, c, id, defaultID, associations, plan.StatusMappings)

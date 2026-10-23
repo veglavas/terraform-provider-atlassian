@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.3...v0.1.4) (2026-10-23)
+
+
+### Bug Fixes
+
+* resolve workflow statuses through modern status API ([43d9652](https://github.com/veglavas/terraform-provider-atlassian/commit/43d9652257c189c85ad3563d4884221010f9e691))
+
 ## [0.1.3](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.2...v0.1.3) (2026-10-23)
 
 

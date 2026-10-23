@@ -93,19 +93,25 @@ func (r *workflowResource) workflowPayload(ctx context.Context, name, descriptio
 			return nil, fmt.Errorf("duplicate status ID %q", id)
 		}
 		seen[id] = true
-		var status struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Category    struct {
-				Key string `json:"key"`
-			} `json:"statusCategory"`
-		}
-		if err := r.client.Get(ctx, "/rest/api/3/status/"+atlassian.PathEscape(id), &status); err != nil {
+		// The legacy /status/{id} lookup can hide statuses not yet associated
+		// with a workflow. Use the same modern lookup as the status resource.
+		status, found, err := findStatusByID(ctx, r.client, id)
+		if err != nil {
 			return nil, err
 		}
-		category := map[string]string{"new": "TODO", "indeterminate": "IN_PROGRESS", "done": "DONE"}[status.Category.Key]
-		if category == "" || status.Name == "" {
+		if !found {
+			return nil, fmt.Errorf("status %q not found in Jira status search", id)
+		}
+		category := status.statusCategoryKey()
+		switch category {
+		case "new":
+			category = "TODO"
+		case "indeterminate":
+			category = "IN_PROGRESS"
+		case "done":
+			category = "DONE"
+		}
+		if (category != "TODO" && category != "IN_PROGRESS" && category != "DONE") || status.Name == "" {
 			return nil, fmt.Errorf("incomplete definition for status %q", id)
 		}
 		statuses = append(statuses, map[string]any{"id": id, "statusReference": id, "name": status.Name, "description": status.Description, "statusCategory": category})

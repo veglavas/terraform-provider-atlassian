@@ -43,8 +43,11 @@ func TestWorkflowModernUpdate(t *testing.T) {
 						t.Error("incorrect workflow lookup")
 					}
 					json.NewEncoder(w).Encode(map[string]any{"workflows": []any{current}})
-				case "/rest/api/3/status/1":
-					json.NewEncoder(w).Encode(map[string]any{"id": "1", "name": "Open", "statusCategory": map[string]string{"key": "new"}})
+				case "/rest/api/3/statuses/search":
+					if r.Method != http.MethodGet || r.URL.RawQuery != "id=1&startAt=0&maxResults=50" {
+						t.Errorf("unexpected status search: %s %s", r.Method, r.URL)
+					}
+					fmt.Fprint(w, `{"isLast":true,"values":[{"id":"1","name":"Open","statusCategory":"TODO"}]}`)
 				case "/rest/api/3/workflows/update/validation":
 					validations.Add(1)
 					var body struct {

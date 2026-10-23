@@ -18,7 +18,14 @@ func TestWorkflowModernCreate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/rest/api/3/status/1":
-			json.NewEncoder(w).Encode(map[string]any{"id": "1", "name": "Open", "statusCategory": map[string]any{"key": "new"}})
+			// A status not yet associated with a workflow can be absent here.
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"errorMessages":["The status with id '1' does not exist"],"errors":{}}`))
+		case "/rest/api/3/statuses/search":
+			if req.Method != http.MethodGet || req.URL.RawQuery != "id=1&startAt=0&maxResults=50" {
+				t.Errorf("unexpected status search: %s %s", req.Method, req.URL)
+			}
+			w.Write([]byte(`{"isLast":true,"values":[{"id":"1","name":"Open","description":"Unused status","statusCategory":"TODO"}]}`))
 		case "/rest/api/3/workflows/create/validation":
 			var body map[string]any
 			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -34,6 +41,7 @@ func TestWorkflowModernCreate(t *testing.T) {
 				t.Error("mutation before validation")
 			}
 			var body struct {
+				Statuses  []statusAPIItem `json:"statuses"`
 				Workflows []struct {
 					Name        string           `json:"name"`
 					Statuses    []map[string]any `json:"statuses"`
@@ -45,6 +53,9 @@ func TestWorkflowModernCreate(t *testing.T) {
 			}
 			if len(body.Workflows) != 1 || body.Workflows[0].Name != "test" || len(body.Workflows[0].Transitions) != 1 {
 				t.Errorf("invalid create payload: %+v", body)
+			}
+			if len(body.Statuses) != 1 || body.Statuses[0].ID != "1" || body.Statuses[0].Name != "Open" || body.Statuses[0].Description != "Unused status" || body.Statuses[0].statusCategoryKey() != "TODO" {
+				t.Errorf("incorrect status definitions: %+v", body.Statuses)
 			}
 			w.Write([]byte(`{"workflows":[{"id":"stable-id"}]}`))
 		default:

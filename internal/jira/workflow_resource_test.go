@@ -88,9 +88,13 @@ func (s *workflowMockState) modernItem() map[string]any {
 func newWorkflowMockServer(state *workflowMockState) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/rest/api/3/status/"):
-			id := strings.TrimPrefix(r.URL.Path, "/rest/api/3/status/")
-			json.NewEncoder(w).Encode(map[string]any{"id": id, "name": "Status " + id, "statusCategory": map[string]string{"key": "new"}})
+		case r.Method == "GET" && r.URL.Path == "/rest/api/3/statuses/search":
+			id := r.URL.Query().Get("id")
+			if id == "" || r.URL.Query().Get("startAt") != "0" || r.URL.Query().Get("maxResults") != "50" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]any{"isLast": true, "values": []any{map[string]any{"id": id, "name": "Status " + id, "statusCategory": "TODO"}}})
 		case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/validation"):
 			json.NewEncoder(w).Encode(map[string]any{"errors": []any{}})
 		case r.Method == "POST" && (r.URL.Path == "/rest/api/3/workflows/create" || r.URL.Path == "/rest/api/3/workflows/update"):

@@ -209,7 +209,7 @@ func (r *statusResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	item, found, err := r.findStatusByID(ctx, state.ID.ValueString())
+	item, found, err := findStatusByID(ctx, r.client, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading status", err.Error())
 		return
@@ -292,7 +292,7 @@ func (r *statusResource) ImportState(ctx context.Context, req resource.ImportSta
 }
 
 // findStatusByID paginates through GET /rest/api/3/statuses/search?id={id} and returns the matching item.
-func (r *statusResource) findStatusByID(ctx context.Context, id string) (statusAPIItem, bool, error) {
+func findStatusByID(ctx context.Context, client *atlassian.Client, id string) (statusAPIItem, bool, error) {
 	startAt := 0
 	maxResults := 50
 
@@ -303,7 +303,7 @@ func (r *statusResource) findStatusByID(ctx context.Context, id string) (statusA
 		)
 
 		var page statusSearchResponse
-		statusCode, err := r.client.GetWithStatus(ctx, apiPath, &page)
+		statusCode, err := client.GetWithStatus(ctx, apiPath, &page)
 		if err != nil {
 			return statusAPIItem{}, false, err
 		}

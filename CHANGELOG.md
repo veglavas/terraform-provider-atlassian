@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.4...v0.1.5) (2026-10-23)
+
+
+### Bug Fixes
+
+* group workflow scheme associations by workflow ([6c6d90c](https://github.com/veglavas/terraform-provider-atlassian/commit/6c6d90c94878790885bdc02a6f3a098583a64c11))
+
 ## [0.1.4](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.3...v0.1.4) (2026-10-23)
 
 

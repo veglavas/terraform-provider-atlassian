@@ -105,6 +105,7 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_screen_scheme` | Screen scheme |
 | `atlassian_jira_issue_type_screen_scheme` | Issue type screen scheme |
 | `atlassian_jira_project_issue_type_screen_scheme` | Project ↔ issue type screen scheme association |
+| `atlassian_jsm_request_type` | JSM request type (all configuration changes require replacement; portal grouping/forms remain manual) |
 | `atlassian_confluence_space` | Confluence space |
 | `atlassian_confluence_space_permission` | Confluence space permission |
 
@@ -125,7 +126,10 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_screen` | Look up a screen by name |
 | `atlassian_jira_screen_scheme` | Look up a screen scheme by name |
 | `atlassian_jira_issue_type_screen_scheme` | Look up an issue type screen scheme by name |
+| `atlassian_jsm_request_type` | Look up a JSM request type by service desk ID and request type ID |
 | `atlassian_confluence_space` | Look up a Confluence space by key |
+
+See the [JSM request-type guide](docs/guides/jsm-request-types.md) for API limitations, import, and portal setup boundaries.
 
 ## Development
 

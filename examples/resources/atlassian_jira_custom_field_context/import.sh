@@ -1,0 +1,1 @@
+terraform import atlassian_jira_custom_field_context.example customfield_10000/10100

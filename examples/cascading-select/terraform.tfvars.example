@@ -1,0 +1,6 @@
+project_id = "10001"
+
+department_units = {
+  "Department A" = ["Unit A1", "Unit A2"]
+  "Department B" = ["Unit B1"]
+}

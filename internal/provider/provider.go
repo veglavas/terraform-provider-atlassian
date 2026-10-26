@@ -144,6 +144,7 @@ func (p *AtlassianProvider) DataSources(_ context.Context) []func() datasource.D
 		jira.NewScreenDataSource,
 		jira.NewScreenSchemeDataSource,
 		jira.NewIssueTypeScreenSchemeDataSource,
+		jsm.NewServiceDeskDataSource,
 		jsm.NewRequestTypeDataSource,
 		confluence.NewSpaceDataSource,
 	}

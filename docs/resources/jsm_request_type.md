@@ -12,9 +12,15 @@ Manages a Jira Service Management request type in a company-managed (classic) se
 ## Example Usage
 
 ```terraform
+# Reuse a managed service project; the lookup also works when the project is
+# created in the same apply. See examples/jsm-request-types for a full setup.
+data "atlassian_jsm_service_desk" "example" {
+  project_id = atlassian_jira_project.service.id
+}
+
 resource "atlassian_jsm_request_type" "example" {
-  service_desk_id = "2"     # JSM service desk ID, not the Jira project ID.
-  issue_type_id   = "10001" # Existing parent issue type in this project.
+  service_desk_id = data.atlassian_jsm_service_desk.example.id
+  issue_type_id   = atlassian_jira_issue_type.joiner.id
   name            = "Employee onboarding"
   description     = "Request onboarding for a new employee."
   help_text       = "Provide the details needed for HR validation."

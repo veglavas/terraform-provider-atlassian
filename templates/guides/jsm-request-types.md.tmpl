@@ -14,9 +14,9 @@ Requires service desk administrator permissions. The public create/delete APIs a
 ## Example
 
 ```hcl
-variable "service_desk_id" {
-  description = "Numeric JSM service desk ID, not the Jira project ID."
-  type        = string
+# Reuse your managed service project, including one created in this apply.
+data "atlassian_jsm_service_desk" "service" {
+  project_id = atlassian_jira_project.service.id
 }
 
 variable "request_issue_type_ids" {
@@ -27,7 +27,7 @@ variable "request_issue_type_ids" {
 resource "atlassian_jsm_request_type" "lifecycle" {
   for_each = var.request_issue_type_ids
 
-  service_desk_id = var.service_desk_id
+  service_desk_id = data.atlassian_jsm_service_desk.service.id
   issue_type_id   = each.value # Or reference an existing issue type resource's ID.
   name           = each.key
 
@@ -39,7 +39,11 @@ resource "atlassian_jsm_request_type" "lifecycle" {
 
 For example, map onboarding, transfer, and offboarding request types to your existing Joiner, Mover, and Leaver issue types. Keep existing workflow/automation references; do not create duplicate issue types. Creating request types does not change when automation runs or automatically assign a request type to work items created directly in Jira.
 
-Discover service desk IDs with the read-only `GET /rest/servicedeskapi/servicedesk` endpoint (follow its `start`, `limit`, and `isLastPage` pagination). Use its `values[].id`, **not** the Jira project ID. The provider deliberately accepts only numeric service desk IDs, not API project aliases.
+No manual service desk ID discovery is required. `data.atlassian_jsm_service_desk.service` finds the desk by the managed project's generated ID. Terraform defers the lookup until apply when that ID is unknown, then passes the discovered desk ID to request types. The lookup follows all pages, rejects ambiguous or malformed results, and retries absence for up to 30 seconds while a new desk becomes visible. It can only discover desks the authenticated user can access; a non-service project or inaccessible desk produces an actionable error, not a guessed ID. Retry if provisioning takes longer.
+
+See `examples/jsm-request-types/main.tf` for a from-scratch example: managed service project, issue type, scheme assignment, service desk lookup, and request type. It needs no manually discovered project, service desk, or issue type IDs. The project lead's accountId and provider credentials remain required inputs. Existing projects should reuse their existing resources, not create duplicates.
+
+The request type resource still takes a numeric `service_desk_id` so callers can also reference externally managed desks. It is not a Jira project ID or key.
 
 ## Important lifecycle limitations
 
@@ -78,11 +82,11 @@ Mock-backed lifecycle tests run with normal `go test ./...`. Gated live acceptan
 
 ```bash
 TF_ACC=1 \
-ATLASSIAN_TEST_SERVICE_DESK_ID=YOUR_DEMO_DESK_ID \
+ATLASSIAN_TEST_PROJECT_ID=YOUR_DEMO_SERVICE_PROJECT_ID \
 ATLASSIAN_TEST_REQUEST_ISSUE_TYPE_ID=YOUR_EXISTING_DEMO_PARENT_ISSUE_TYPE_ID \
 go test ./internal/jsm -run '^TestIntegrationRequestType$' -v
 ```
 
-This creates and deletes a disposable request type, not a production request type. It does not configure portal groups or forms.
+This discovers the supplied demo project's desk, then creates and deletes a disposable request type, not a production request type. It does not configure portal groups or forms.
 
 Contracts checked against the [official JSM OpenAPI specification](https://dac-static.atlassian.com/cloud/jira/service-desk/swagger.v3.json) on 2026-10-26. Relevant paths: POST the service desk's `/requesttype` collection; GET/DELETE its `/requesttype/{requestTypeId}` member.

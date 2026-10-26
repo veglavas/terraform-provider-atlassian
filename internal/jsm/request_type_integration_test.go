@@ -15,14 +15,15 @@ import (
 	"github.com/lbajsarowicz/terraform-provider-atlassian/internal/testutil"
 )
 
-// Creates only a disposable request type in an explicitly supplied test desk.
+// Creates only a disposable request type in an explicitly supplied test project.
+// Discovers its service desk without requiring a manually supplied desk ID.
 // Never selects or modifies an existing request type by name.
 func TestIntegrationRequestType(t *testing.T) {
 	testutil.SkipIfNoAcc(t)
-	deskID := os.Getenv("ATLASSIAN_TEST_SERVICE_DESK_ID")
+	projectID := os.Getenv("ATLASSIAN_TEST_PROJECT_ID")
 	issueTypeID := os.Getenv("ATLASSIAN_TEST_REQUEST_ISSUE_TYPE_ID")
-	if deskID == "" || issueTypeID == "" {
-		t.Skip("set ATLASSIAN_TEST_SERVICE_DESK_ID and ATLASSIAN_TEST_REQUEST_ISSUE_TYPE_ID for a company-managed demo service project")
+	if projectID == "" || issueTypeID == "" {
+		t.Skip("set ATLASSIAN_TEST_PROJECT_ID and ATLASSIAN_TEST_REQUEST_ISSUE_TYPE_ID for a company-managed demo service project")
 	}
 	client, err := testutil.SweepClient()
 	if err != nil {
@@ -30,8 +31,11 @@ func TestIntegrationRequestType(t *testing.T) {
 	}
 	name := "tf-acc-test-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	config := fmt.Sprintf(`
+data "atlassian_jsm_service_desk" "test" {
+ project_id = %q
+}
 resource "atlassian_jsm_request_type" "test" {
- service_desk_id = %q
+ service_desk_id = data.atlassian_jsm_service_desk.test.id
  issue_type_id = %q
  name = %q
  description = "Disposable acceptance request type"
@@ -41,7 +45,7 @@ data "atlassian_jsm_request_type" "test" {
  service_desk_id = atlassian_jsm_request_type.test.service_desk_id
  id = atlassian_jsm_request_type.test.id
 }
-`, deskID, issueTypeID, name)
+`, projectID, issueTypeID, name)
 	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: testutil.ProtoV6ProviderFactories,
 		CheckDestroy: func(s *terraform.State) error {
 			for address, rs := range s.RootModule().Resources {
@@ -71,7 +75,7 @@ data "atlassian_jsm_request_type" "test" {
 				if rs == nil {
 					return "", fmt.Errorf("request type not in state")
 				}
-				return deskID + "/" + rs.Primary.ID, nil
+				return rs.Primary.Attributes["service_desk_id"] + "/" + rs.Primary.ID, nil
 			}, ImportStateVerify: true},
 			{Config: config, PlanOnly: true},
 		}})

@@ -126,6 +126,7 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_screen` | Look up a screen by name |
 | `atlassian_jira_screen_scheme` | Look up a screen scheme by name |
 | `atlassian_jira_issue_type_screen_scheme` | Look up an issue type screen scheme by name |
+| `atlassian_jsm_service_desk` | Discover a service desk from a managed Jira project's ID |
 | `atlassian_jsm_request_type` | Look up a JSM request type by service desk ID and request type ID |
 | `atlassian_confluence_space` | Look up a Confluence space by key |
 

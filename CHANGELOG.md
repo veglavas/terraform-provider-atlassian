@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.5...v0.1.6) (2026-10-26)
+
+
+### Features
+
+* manage Jira custom field contexts and options ([8839046](https://github.com/veglavas/terraform-provider-atlassian/commit/88390463438567c00de7ecd36b571187ab6576ae))
+* manage Jira custom field contexts and options ([b298b50](https://github.com/veglavas/terraform-provider-atlassian/commit/b298b50708d45fbe1e7a08d63c0950afeb0679bb))
+
 ## [0.1.5](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.4...v0.1.5) (2026-10-23)
 
 

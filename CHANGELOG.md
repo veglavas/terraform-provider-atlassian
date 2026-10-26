@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.9...v0.1.10) (2026-10-26)
+
+
+### Features
+
+* manage Atlassian Forms project templates ([a936e95](https://github.com/veglavas/terraform-provider-atlassian/commit/a936e95e9d8d932938af22d30f46c014279212cb))
+
 ## [0.1.9](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.8...v0.1.9) (2026-10-26)
 
 

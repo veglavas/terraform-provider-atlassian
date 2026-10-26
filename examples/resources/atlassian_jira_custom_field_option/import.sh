@@ -1,0 +1,2 @@
+terraform import atlassian_jira_custom_field_option.parent customfield_10000/10100/10200
+terraform import atlassian_jira_custom_field_option.child customfield_10000/10100/10201

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.6...v0.1.7) (2026-10-26)
+
+
+### Features
+
+* manage Jira Service Management request types ([5e43d8e](https://github.com/veglavas/terraform-provider-atlassian/commit/5e43d8e1556c183386bcb9b39e214725e476cc1e))
+* manage Jira Service Management request types ([2741ca0](https://github.com/veglavas/terraform-provider-atlassian/commit/2741ca0415fb03b8fdc5bf2ff307e768fdb63e41))
+
 ## [0.1.6](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.5...v0.1.6) (2026-10-26)
 
 

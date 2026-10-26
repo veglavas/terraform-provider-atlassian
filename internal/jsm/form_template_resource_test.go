@@ -182,6 +182,9 @@ func TestFormTemplateWritesAndPartialPreservation(t *testing.T) {
 					if resp.Diagnostics.HasError() != (status != 200) {
 						t.Fatal(resp.Diagnostics)
 					}
+					if status != 200 && !resp.State.Raw.IsNull() {
+						t.Fatal("failed create must not persist state")
+					}
 					if status == 200 && !resp.State.Raw.Equal(state.Raw) {
 						t.Fatal("partial response lost plan")
 					}

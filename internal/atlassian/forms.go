@@ -73,8 +73,8 @@ func validFormsPath(path string) bool {
 	if err != nil || u.IsAbs() || u.Host != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		return false
 	}
-	for _, part := range strings.Split(u.Path, "/") {
-		if part == "." || part == ".." || strings.ContainsAny(part, "\\\r\n") {
+	for _, part := range strings.Split(strings.TrimPrefix(u.Path, "/"), "/") {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, "\\\r\n") {
 			return false
 		}
 	}

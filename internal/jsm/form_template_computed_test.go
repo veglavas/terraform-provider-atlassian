@@ -13,7 +13,7 @@ import (
 )
 
 func TestFormTemplateCreateReadsComputedPublishing(t *testing.T) {
-	for _, scenario := range []string{"null", "unknown"} {
+	for _, scenario := range []string{"null", "unknown", "configured"} {
 		t.Run(scenario, func(t *testing.T) {
 			var creates atomic.Int32
 			client := mockFormClient(t, func(w http.ResponseWriter, req *http.Request) {
@@ -24,12 +24,14 @@ func TestFormTemplateCreateReadsComputedPublishing(t *testing.T) {
 					if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 						t.Error(err)
 					}
-					if _, ok := body["publish"]; ok {
+					if _, ok := body["publish"]; ok && scenario != "configured" {
 						t.Error("unconfigured publishing sent in create request")
 					}
 					fmt.Fprintf(w, `{"id":%q}`, formTestID)
 				case http.MethodGet:
-					fmt.Fprintf(w, `{"id":%q,"design":%s,"publish":%s}`, formTestID, formTestDesign, formTestPublish)
+					// The readiness GET deliberately diverges from the configured
+					// publication so preserving the plan value is observable.
+					fmt.Fprintf(w, `{"id":%q,"design":%s,"publish":{"portal":{"portalRequestTypeIds":[99],"submitOnCreate":false,"validateOnCreate":false}}}`, formTestID, formTestDesign)
 				default:
 					t.Errorf("unexpected method %s", req.Method)
 					w.WriteHeader(http.StatusNotFound)
@@ -44,6 +46,11 @@ func TestFormTemplateCreateReadsComputedPublishing(t *testing.T) {
 			if scenario == "unknown" {
 				model.Publish = formJSON{types.StringUnknown()}
 			}
+			wantPublish := `{"portal":{"portalRequestTypeIds":[99],"submitOnCreate":false,"validateOnCreate":false}}`
+			if scenario == "configured" {
+				model.Publish = formJSON{types.StringValue(formTestPublish)}
+				wantPublish = formTestPublish
+			}
 			plan := tfsdk.Plan{Schema: schema.Schema}
 			if diags := plan.Set(t.Context(), &model); diags.HasError() {
 				t.Fatal(diags)
@@ -57,9 +64,9 @@ func TestFormTemplateCreateReadsComputedPublishing(t *testing.T) {
 			if diags := response.State.Get(t.Context(), &got); diags.HasError() {
 				t.Fatal(diags)
 			}
-			equal, diags := got.Publish.StringSemanticEquals(t.Context(), formJSON{types.StringValue(formTestPublish)})
+			equal, diags := got.Publish.StringSemanticEquals(t.Context(), formJSON{types.StringValue(wantPublish)})
 			if diags.HasError() || !equal {
-				t.Fatalf("computed publishing not populated from GET: %s", got.Publish.ValueString())
+				t.Fatalf("publish mismatch (scenario %s): got %s want %s", scenario, got.Publish.ValueString(), wantPublish)
 			}
 			if got.Design.ValueString() != formTestDesign || creates.Load() != 1 {
 				t.Fatal("configured design changed or create repeated")

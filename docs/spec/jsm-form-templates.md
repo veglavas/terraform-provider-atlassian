@@ -81,9 +81,11 @@ absence under this repository's required missing-read convention.
 
 The resource inputs are `project_id`, `design`, and optional/computed `publish`;
 `id` is the template UUID. Changing the project requires replacement. Update
-replaces the complete design. Omit `publish` to retain remote settings (updates resend the last observed publishing
-object, because omitted-PUT merge/reset semantics are undocumented); explicitly
-supply empty request-type ID arrays to unpublish. An empty object does not promise
+replaces the complete design. Omit `publish` to retain remote settings (updates resend the last
+retained publishing object — the configured subset observed at refresh, since refresh projects
+unknown-optional properties like server-added `publish.jira` out of state; after an import, that
+is the full observed object — because omitted-PUT merge/reset semantics are undocumented);
+explicitly supply empty request-type ID arrays to unpublish. An empty object does not promise
 unpublishing because the API does not document reset semantics for omitted parts.
 
 The local framework custom JSON type implements semantic equality for object key

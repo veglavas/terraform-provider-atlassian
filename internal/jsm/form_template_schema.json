@@ -204,6 +204,9 @@
       "defaultAnswer": {
         "$ref": "#/components/schemas/FormAnswerRequest"
       },
+      "description": {
+        "type": "string"
+      },
       "jiraField": {
         "type": "string"
       },
@@ -581,6 +584,9 @@
       },
       "defaultAnswer": {
         "$ref": "#/components/schemas/FormAnswer"
+      },
+      "description": {
+        "type": "string"
       },
       "jiraField": {
         "type": "string"

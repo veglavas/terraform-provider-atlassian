@@ -259,3 +259,18 @@ func TestFormsBadTenantOrigins(t *testing.T) {
 		}
 	}
 }
+
+func TestFormsRejectsEmptyPathSegments(t *testing.T) {
+	c := formsClientTest(t, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{"cloudId":%q}`, testFormsCloudID)
+	})
+	f, err := c.Forms(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/project//form", "/project/X/form/", "/project//X/form"} {
+		if _, err := f.Do(t.Context(), "GET", path, nil); err == nil {
+			t.Errorf("empty path segment accepted: %s", path)
+		}
+	}
+}

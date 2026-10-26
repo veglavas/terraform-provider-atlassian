@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.8...v0.1.9) (2026-10-26)
+
+
+### Bug Fixes
+
+* replace existing issue type screen scheme mappings ([d2f8342](https://github.com/veglavas/terraform-provider-atlassian/commit/d2f834289289537aad7dcfea87b617953a4f835b))
+* replace existing issue type screen scheme mappings ([e68b247](https://github.com/veglavas/terraform-provider-atlassian/commit/e68b2478025cb5f0b2c7b696277189d355329eb5))
+
 ## [0.1.8](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.7...v0.1.8) (2026-10-26)
 
 

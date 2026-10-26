@@ -105,7 +105,8 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_screen_scheme` | Screen scheme |
 | `atlassian_jira_issue_type_screen_scheme` | Issue type screen scheme |
 | `atlassian_jira_project_issue_type_screen_scheme` | Project ↔ issue type screen scheme association |
-| `atlassian_jsm_request_type` | JSM request type (all configuration changes require replacement; portal grouping/forms remain manual) |
+| `atlassian_jsm_form_template` | Forms project template CRUD with normalized JSON designs and request-type publication |
+| `atlassian_jsm_request_type` | JSM request type (all configuration changes require replacement; portal grouping remains manual) |
 | `atlassian_confluence_space` | Confluence space |
 | `atlassian_confluence_space_permission` | Confluence space permission |
 
@@ -127,10 +128,13 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_screen_scheme` | Look up a screen scheme by name |
 | `atlassian_jira_issue_type_screen_scheme` | Look up an issue type screen scheme by name |
 | `atlassian_jsm_service_desk` | Discover a service desk from a managed Jira project's ID |
+| `atlassian_jsm_form_template` | Read a project form template by project ID/key and UUID |
 | `atlassian_jsm_request_type` | Look up a JSM request type by service desk ID and request type ID |
 | `atlassian_confluence_space` | Look up a Confluence space by key |
 
 See the [JSM request-type guide](docs/guides/jsm-request-types.md) for API limitations, import, and portal setup boundaries.
+
+See the [Forms contract and limitations](docs/spec/jsm-form-templates.md) and [three JML forms example](examples/jml-forms/) for linked custom fields and request-type publishing. Valid existing design layouts are required; the public layout example is opaque. Forms management does not remove native Summary or guarantee a custom-fields-only portal.
 
 ## Development
 

@@ -1,0 +1,679 @@
+{
+  "FormTemplateRequest": {
+    "properties": {
+      "design": {
+        "$ref": "#/components/schemas/FormDesignRequest"
+      },
+      "publish": {
+        "$ref": "#/components/schemas/FormPublishing"
+      }
+    },
+    "required": [
+      "design"
+    ],
+    "type": "object"
+  },
+  "FormDesignRequest": {
+    "properties": {
+      "conditions": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/FormCondition"
+        },
+        "type": "object"
+      },
+      "layout": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "questions": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/FormQuestionRequest"
+        },
+        "type": "object"
+      },
+      "sections": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/FormSection"
+        },
+        "type": "object"
+      },
+      "settings": {
+        "$ref": "#/components/schemas/FormSettings"
+      }
+    },
+    "required": [
+      "conditions",
+      "layout",
+      "questions",
+      "sections",
+      "settings"
+    ],
+    "type": "object"
+  },
+  "FormCondition": {
+    "properties": {
+      "i": {
+        "$ref": "#/components/schemas/FormConditionInput"
+      },
+      "o": {
+        "$ref": "#/components/schemas/FormConditionOutput"
+      }
+    },
+    "required": [
+      "i",
+      "o"
+    ],
+    "type": "object"
+  },
+  "FormConditionInput": {
+    "properties": {
+      "co": {
+        "$ref": "#/components/schemas/OneChoiceInput"
+      },
+      "groups": {
+        "items": {
+          "$ref": "#/components/schemas/Group"
+        },
+        "type": "array"
+      },
+      "operator": {
+        "enum": [
+          "AND",
+          "OR"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "co"
+    ],
+    "type": "object"
+  },
+  "OneChoiceInput": {
+    "properties": {
+      "cIds": {
+        "additionalProperties": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type": "object"
+      }
+    },
+    "required": [
+      "cIds"
+    ],
+    "type": "object"
+  },
+  "Group": {
+    "properties": {
+      "checks": {
+        "items": {
+          "$ref": "#/components/schemas/FieldCheck"
+        },
+        "type": "array"
+      },
+      "operator": {
+        "enum": [
+          "AND",
+          "OR"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "checks",
+      "operator"
+    ],
+    "type": "object"
+  },
+  "FieldCheck": {
+    "properties": {
+      "constraint": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "fieldId": {
+        "type": "string"
+      },
+      "type": {
+        "enum": [
+          "ALL_OF",
+          "BETWEEN",
+          "CONTAINS",
+          "DOES_NOT_CONTAIN",
+          "DOES_NOT_EQUAL",
+          "EMPTY",
+          "EQUAL_TO",
+          "GREATER_THAN",
+          "GREATER_THAN_OR_EQUAL_TO",
+          "LESS_THAN",
+          "LESS_THAN_OR_EQUAL_TO",
+          "NONE_OF",
+          "NOT_EMPTY",
+          "SOME_OF"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "constraint",
+      "fieldId",
+      "type"
+    ],
+    "type": "object"
+  },
+  "FormConditionOutput": {
+    "properties": {
+      "sIds": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "t": {
+        "enum": [
+          "sh",
+          "hide"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "sIds",
+      "t"
+    ],
+    "type": "object"
+  },
+  "FormQuestionRequest": {
+    "properties": {
+      "choices": {
+        "items": {
+          "$ref": "#/components/schemas/FormChoice"
+        },
+        "type": "array"
+      },
+      "dcId": {
+        "type": "string"
+      },
+      "defaultAnswer": {
+        "$ref": "#/components/schemas/FormAnswerRequest"
+      },
+      "jiraField": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "questionKey": {
+        "type": "string"
+      },
+      "type": {
+        "enum": [
+          "at",
+          "cc",
+          "cd",
+          "cl",
+          "cm",
+          "cs",
+          "ob",
+          "da",
+          "dt",
+          "no",
+          "rt",
+          "te",
+          "tl",
+          "pg",
+          "ts",
+          "tu",
+          "ti",
+          "um",
+          "us"
+        ],
+        "type": "string"
+      },
+      "validation": {
+        "$ref": "#/components/schemas/FormValidation"
+      }
+    },
+    "required": [
+      "label",
+      "type",
+      "validation"
+    ],
+    "type": "object"
+  },
+  "FormChoice": {
+    "properties": {
+      "children": {
+        "items": {
+          "$ref": "#/components/schemas/FormChoice"
+        },
+        "type": "array"
+      },
+      "id": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "other": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "id",
+      "label"
+    ],
+    "type": "object"
+  },
+  "FormAnswerRequest": {
+    "properties": {
+      "adf": {
+        "type": "object"
+      },
+      "choices": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "date": {
+        "type": "string"
+      },
+      "files": {
+        "items": {
+          "$ref": "#/components/schemas/FormFile"
+        },
+        "type": "array"
+      },
+      "text": {
+        "type": "string"
+      },
+      "time": {
+        "type": "string"
+      },
+      "users": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "type": "object"
+  },
+  "FormFile": {
+    "properties": {
+      "creationDate": {
+        "type": "integer"
+      },
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "size": {
+        "type": "integer"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "type": "object"
+  },
+  "FormValidation": {
+    "properties": {
+      "ch": {
+        "type": "string"
+      },
+      "mnc": {
+        "type": "integer"
+      },
+      "mnd": {
+        "type": "string"
+      },
+      "mnn": {
+        "type": "number"
+      },
+      "mns": {
+        "type": "integer"
+      },
+      "mnt": {
+        "type": "string"
+      },
+      "mnw": {
+        "type": "integer"
+      },
+      "mxc": {
+        "type": "integer"
+      },
+      "mxd": {
+        "type": "string"
+      },
+      "mxn": {
+        "type": "number"
+      },
+      "mxs": {
+        "type": "integer"
+      },
+      "mxt": {
+        "type": "string"
+      },
+      "mxw": {
+        "type": "integer"
+      },
+      "rgx": {
+        "$ref": "#/components/schemas/FormValidationRegex"
+      },
+      "rq": {
+        "type": "boolean"
+      },
+      "wh": {
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  },
+  "FormValidationRegex": {
+    "properties": {
+      "m": {
+        "type": "string"
+      },
+      "p": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "p"
+    ],
+    "type": "object"
+  },
+  "FormSection": {
+    "properties": {
+      "conditions": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "name": {
+        "type": "string"
+      },
+      "sectionType": {
+        "enum": [
+          "p",
+          "b"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "sectionType"
+    ],
+    "type": "object"
+  },
+  "FormSettings": {
+    "properties": {
+      "language": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "primaryLocale": {
+        "type": "string"
+      },
+      "submit": {
+        "$ref": "#/components/schemas/FormSettingsSubmit"
+      },
+      "translatedLocale": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "submit"
+    ],
+    "type": "object"
+  },
+  "FormSettingsSubmit": {
+    "properties": {
+      "lock": {
+        "type": "boolean"
+      },
+      "pdf": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "lock",
+      "pdf"
+    ],
+    "type": "object"
+  },
+  "FormPublishing": {
+    "properties": {
+      "jira": {
+        "$ref": "#/components/schemas/FormPublishingJira"
+      },
+      "portal": {
+        "$ref": "#/components/schemas/FormPublishingPortal"
+      }
+    },
+    "type": "object"
+  },
+  "FormPublishingJira": {
+    "properties": {
+      "issueCreateIssueTypeIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "issueCreateRequestTypeIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "recommendedIssueRequestTypeIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "submitOnCreate": {
+        "type": "boolean"
+      },
+      "validateOnCreate": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "issueCreateIssueTypeIds",
+      "issueCreateRequestTypeIds",
+      "recommendedIssueRequestTypeIds",
+      "submitOnCreate",
+      "validateOnCreate"
+    ],
+    "type": "object"
+  },
+  "FormPublishingPortal": {
+    "properties": {
+      "portalRequestTypeIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "submitOnCreate": {
+        "type": "boolean"
+      },
+      "validateOnCreate": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "portalRequestTypeIds",
+      "submitOnCreate",
+      "validateOnCreate"
+    ],
+    "type": "object"
+  },
+  "FormDesign": {
+    "properties": {
+      "conditions": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/FormCondition"
+        },
+        "type": "object"
+      },
+      "layout": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "questions": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/FormQuestion"
+        },
+        "type": "object"
+      },
+      "sections": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/FormSection"
+        },
+        "type": "object"
+      },
+      "settings": {
+        "$ref": "#/components/schemas/FormSettings"
+      }
+    },
+    "required": [
+      "conditions",
+      "layout",
+      "questions",
+      "sections",
+      "settings"
+    ],
+    "type": "object"
+  },
+  "FormQuestion": {
+    "properties": {
+      "choices": {
+        "items": {
+          "$ref": "#/components/schemas/FormChoice"
+        },
+        "type": "array"
+      },
+      "dcId": {
+        "type": "string"
+      },
+      "defaultAnswer": {
+        "$ref": "#/components/schemas/FormAnswer"
+      },
+      "jiraField": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "questionKey": {
+        "type": "string"
+      },
+      "type": {
+        "enum": [
+          "at",
+          "cc",
+          "cd",
+          "cl",
+          "cm",
+          "cs",
+          "ob",
+          "da",
+          "dt",
+          "no",
+          "rt",
+          "te",
+          "tl",
+          "pg",
+          "ts",
+          "tu",
+          "ti",
+          "um",
+          "us"
+        ],
+        "type": "string"
+      },
+      "validation": {
+        "$ref": "#/components/schemas/FormValidation"
+      }
+    },
+    "required": [
+      "label",
+      "type",
+      "validation"
+    ],
+    "type": "object"
+  },
+  "FormAnswer": {
+    "properties": {
+      "adf": {
+        "type": "object"
+      },
+      "choices": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "date": {
+        "type": "string"
+      },
+      "files": {
+        "items": {
+          "$ref": "#/components/schemas/FormFile"
+        },
+        "type": "array"
+      },
+      "text": {
+        "type": "string"
+      },
+      "time": {
+        "type": "string"
+      },
+      "users": {
+        "items": {
+          "$ref": "#/components/schemas/FormUser"
+        },
+        "type": "array"
+      }
+    },
+    "type": "object"
+  },
+  "FormUser": {
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "name"
+    ],
+    "type": "object"
+  }
+}

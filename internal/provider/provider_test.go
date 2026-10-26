@@ -41,3 +41,24 @@ func TestProviderSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestFormTemplateRegistration(t *testing.T) {
+	server, err := providerserver.NewProtocol6WithError(provider.New("test")())()
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemas, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range schemas.Diagnostics {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			t.Fatal(d)
+		}
+	}
+	for kind, schema := range map[string]*tfprotov6.Schema{"resource": schemas.ResourceSchemas["atlassian_jsm_form_template"], "data source": schemas.DataSourceSchemas["atlassian_jsm_form_template"]} {
+		if schema == nil || len(schema.Block.Attributes) != 4 {
+			t.Fatalf("%s missing focused Forms schema", kind)
+		}
+	}
+}

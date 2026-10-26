@@ -1,0 +1,29 @@
+{
+  "design": {
+    "conditions": {},
+    "layout": [{}],
+    "questions": {},
+    "sections": {},
+    "settings": {
+      "language": "en",
+      "name": "New employee onboarding",
+      "primaryLocale": "en-US",
+      "submit": { "lock": true, "pdf": true },
+      "translatedLocale": "en-GB"
+    }
+  },
+  "publish": {
+    "jira": {
+      "issueCreateIssueTypeIds": [109],
+      "issueCreateRequestTypeIds": [111],
+      "recommendedIssueRequestTypeIds": [92],
+      "submitOnCreate": true,
+      "validateOnCreate": true
+    },
+    "portal": {
+      "portalRequestTypeIds": [63],
+      "submitOnCreate": true,
+      "validateOnCreate": true
+    }
+  }
+}

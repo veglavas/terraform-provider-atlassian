@@ -25,11 +25,13 @@ const (
 
 // Client is the Atlassian Cloud API client.
 type Client struct {
-	baseURL    string
-	user       string
-	token      string
-	version    string
-	httpClient *http.Client
+	baseURL        string
+	user           string
+	token          string
+	version        string
+	httpClient     *http.Client
+	forms          bool
+	formsDiscovery *formsDiscovery
 }
 
 // ClientConfig holds the configuration for creating a new Client.
@@ -41,6 +43,8 @@ type ClientConfig struct {
 	// ResponseHeaderTimeout is how long to wait for response headers before
 	// cancelling the request. Defaults to 30s. Set a shorter value in tests.
 	ResponseHeaderTimeout time.Duration
+	// HTTPClient overrides transport behavior for deterministic local tests. Never exposed in provider configuration.
+	HTTPClient *http.Client
 }
 
 // NewClient creates a new Atlassian API client.
@@ -81,15 +85,18 @@ func NewClient(config ClientConfig) (*Client, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ResponseHeaderTimeout = responseHeaderTimeout
 
+	httpClient := config.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 30 * time.Second, Transport: transport}
+	}
+
 	return &Client{
-		baseURL: baseURL,
-		user:    user,
-		token:   token,
-		version: config.Version,
-		httpClient: &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
-		},
+		baseURL:        baseURL,
+		user:           user,
+		token:          token,
+		version:        config.Version,
+		httpClient:     httpClient,
+		formsDiscovery: &formsDiscovery{},
 	}, nil
 }
 
@@ -111,6 +118,9 @@ func PathEscape(s string) string {
 
 // newRequest creates a new HTTP request with authentication and standard headers.
 func (c *Client) newRequest(ctx context.Context, method, path string, body *bytes.Reader) (*http.Request, error) {
+	if c.forms && !validFormsPath(path) {
+		return nil, fmt.Errorf("invalid Forms relative path")
+	}
 	u := c.baseURL + path
 
 	var req *http.Request
@@ -167,7 +177,19 @@ func (c *Client) Do(ctx context.Context, method, path string, body []byte, optio
 		}
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
+			if c.forms {
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
+				return nil, fmt.Errorf("Forms transport failed; response outcome is unknown")
+			}
 			return nil, fmt.Errorf("executing request: %w", err)
+		}
+
+		// A template POST has no documented idempotency key. Do not replay it,
+		// even after a server error or rate limit. The caller must reconcile first.
+		if c.forms && method == http.MethodPost {
+			return resp, nil
 		}
 
 		// Rate limited
@@ -212,7 +234,7 @@ func (c *Client) Get(ctx context.Context, path string, v interface{}) error {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("GET %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return c.statusError("GET", path, resp.StatusCode, bodyBytes)
 	}
 
 	return json.NewDecoder(resp.Body).Decode(v)
@@ -233,7 +255,7 @@ func (c *Client) GetWithStatus(ctx context.Context, path string, v interface{}) 
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return resp.StatusCode, fmt.Errorf("GET %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return resp.StatusCode, c.statusError("GET", path, resp.StatusCode, bodyBytes)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
@@ -258,7 +280,7 @@ func (c *Client) Post(ctx context.Context, path string, body interface{}, v inte
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("POST %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return c.statusError("POST", path, resp.StatusCode, bodyBytes)
 	}
 
 	if v != nil {
@@ -283,7 +305,7 @@ func (c *Client) Put(ctx context.Context, path string, body interface{}, v inter
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("PUT %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return c.statusError("PUT", path, resp.StatusCode, bodyBytes)
 	}
 
 	if v != nil {
@@ -308,7 +330,7 @@ func (c *Client) Patch(ctx context.Context, path string, body interface{}, v int
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("PATCH %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return c.statusError("PATCH", path, resp.StatusCode, bodyBytes)
 	}
 
 	if v != nil {
@@ -328,7 +350,7 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("DELETE %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return c.statusError("DELETE", path, resp.StatusCode, bodyBytes)
 	}
 
 	return nil
@@ -349,7 +371,7 @@ func (c *Client) DeleteWithStatus(ctx context.Context, path string, options ...R
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return resp.StatusCode, fmt.Errorf("DELETE %s: unexpected status %d: %s", path, resp.StatusCode, string(bodyBytes))
+		return resp.StatusCode, c.statusError("DELETE", path, resp.StatusCode, bodyBytes)
 	}
 
 	return resp.StatusCode, nil

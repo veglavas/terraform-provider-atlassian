@@ -122,6 +122,7 @@ func (p *AtlassianProvider) Resources(_ context.Context) []func() resource.Resou
 		jira.NewIssueTypeScreenSchemeResource,
 		jira.NewProjectIssueTypeScreenSchemeResource,
 		jsm.NewRequestTypeResource,
+		jsm.NewFormTemplateResource,
 		confluence.NewSpaceResource,
 		confluence.NewSpacePermissionResource,
 	}
@@ -146,6 +147,7 @@ func (p *AtlassianProvider) DataSources(_ context.Context) []func() datasource.D
 		jira.NewIssueTypeScreenSchemeDataSource,
 		jsm.NewServiceDeskDataSource,
 		jsm.NewRequestTypeDataSource,
+		jsm.NewFormTemplateDataSource,
 		confluence.NewSpaceDataSource,
 	}
 }

@@ -135,9 +135,17 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body *byte
 	return req, nil
 }
 
+// RequestOption customizes every attempt of a request, including retries.
+type RequestOption func(*http.Request)
+
+// WithExperimentalAPI opts into documented experimental Atlassian endpoints.
+func WithExperimentalAPI() RequestOption {
+	return func(req *http.Request) { req.Header.Set("X-ExperimentalApi", "opt-in") }
+}
+
 // Do executes an HTTP request with retry logic for rate limits and server errors.
 // The body parameter uses bytes.NewReader so it can be replayed on retries.
-func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+func (c *Client) Do(ctx context.Context, method, path string, body []byte, options ...RequestOption) (*http.Response, error) {
 	var bodyReader *bytes.Reader
 	if body != nil {
 		bodyReader = bytes.NewReader(body)
@@ -154,6 +162,9 @@ func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*htt
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
 
+		for _, option := range options {
+			option(req)
+		}
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("executing request: %w", err)
@@ -233,13 +244,13 @@ func (c *Client) GetWithStatus(ctx context.Context, path string, v interface{}) 
 }
 
 // Post performs a POST request with a JSON body and decodes the response into v.
-func (c *Client) Post(ctx context.Context, path string, body interface{}, v interface{}) error {
+func (c *Client) Post(ctx context.Context, path string, body interface{}, v interface{}, options ...RequestOption) error {
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("marshaling request body: %w", err)
 	}
 
-	resp, err := c.Do(ctx, "POST", path, jsonBody)
+	resp, err := c.Do(ctx, "POST", path, jsonBody, options...)
 	if err != nil {
 		return err
 	}
@@ -325,8 +336,8 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 
 // DeleteWithStatus performs a DELETE request and returns the HTTP status code.
 // On 404, returns (404, nil) — the caller decides how to handle it.
-func (c *Client) DeleteWithStatus(ctx context.Context, path string) (int, error) {
-	resp, err := c.Do(ctx, "DELETE", path, nil)
+func (c *Client) DeleteWithStatus(ctx context.Context, path string, options ...RequestOption) (int, error) {
+	resp, err := c.Do(ctx, "DELETE", path, nil, options...)
 	if err != nil {
 		return 0, err
 	}

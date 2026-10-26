@@ -17,6 +17,14 @@ Manage customer request types declaratively so the same Joiner/Mover/Leaver issu
 - Read all attributes and remove missing resources on 404. Preserve state on malformed or mismatched successful reads. Delete tolerates 404.
 - No automatic adoption by name, no bulk ownership, no changes to existing request types unless imported.
 
+## Service desk discovery
+
+`data.atlassian_jsm_service_desk` takes a numeric Jira `project_id` (including a managed project's generated ID) and returns the associated service desk `id`, `project_key`, and `project_name`. Terraform defers unknown project IDs until apply. No manual desk ID discovery is required. This is a lookup, not a new service desk provisioning resource.
+
+Use GET `/rest/servicedeskapi/servicedesk?start=...&limit=100`, scan every page by exact project ID, and respect server-capped pages. Reject incomplete pages, repeated offsets/IDs, and ambiguous project matches. Retry complete-scan absence for up to 30 seconds for eventual provisioning; propagate permission/API errors immediately. Explain that only visible, provisioned service desks can be discovered. Do not select by project display name or confuse project IDs with desk IDs.
+
+Test lookup pagination, malformed/ambiguous/error cases, eventual visibility, missing desks, and the real mock-backed Terraform dependency graph: create project -> deferred lookup -> request type, stable second plan, safe teardown. Include a from-scratch example with generated resource references and extend gated acceptance to discover the desk from the demo project ID.
+
 ## Verified API contract
 
 Source: [official JSM OpenAPI specification](https://dac-static.atlassian.com/cloud/jira/service-desk/swagger.v3.json), checked 2026-10-26.
@@ -34,7 +42,7 @@ Source: [official JSM OpenAPI specification](https://dac-static.atlassian.com/cl
 - Warn about destructive replacements; show prevent_destroy in production examples.
 - Mock HTTP tests validate methods, paths, query parameters, request bodies, experimental headers, authentication and user agent.
 - Test imports, data source, drift, partial creation, malformed reads, permission errors, eventual visibility, 404 reads/deletes, stable second plan, and replacement plans for every configurable attribute.
-- Add gated live acceptance using the existing demo-host allowlist/confirmation, randomized names, CheckDestroy, explicitly supplied service desk/issue type IDs. No live execution without authorization.
+- Add gated live acceptance using the existing demo-host allowlist/confirmation, randomized names, CheckDestroy, explicitly supplied demo service project/issue type IDs. No live execution without authorization.
 
 ## Out of scope
 

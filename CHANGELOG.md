@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.7...v0.1.8) (2026-10-26)
+
+
+### Features
+
+* discover JSM service desks from managed projects ([bdb8114](https://github.com/veglavas/terraform-provider-atlassian/commit/bdb8114d56596f1b43248187648ada9aa7eecf93))
+* discover JSM service desks from managed projects ([fce4281](https://github.com/veglavas/terraform-provider-atlassian/commit/fce428109c17e9ec4d85110b9e8e6233e02e193a))
+
 ## [0.1.7](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.6...v0.1.7) (2026-10-26)
 
 

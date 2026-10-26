@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -246,38 +247,42 @@ func (r *issueTypeScreenSchemeResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	// Determine mappings to add/update (in plan but not in state, or different screenSchemeId)
-	var toAddOrUpdate []issueTypeScreenSchemeMappingItem
+	// The default has a dedicated endpoint; it cannot be appended or removed.
+	// Update it first so mappings temporarily removed below use the planned fallback.
+	if defaultID, ok := planMappings["default"]; ok && defaultID != stateMappings["default"] {
+		defaultPath := fmt.Sprintf("/rest/api/3/issuetypescreenscheme/%s/mapping/default", atlassian.PathEscape(schemeID))
+		if err := r.client.Put(ctx, defaultPath, map[string]string{"screenSchemeId": defaultID}, nil); err != nil {
+			resp.Diagnostics.AddError("Error updating issue type screen scheme default mapping", err.Error())
+			return
+		}
+	}
+
+	// Jira's mapping PUT appends only: changing an existing mapping requires
+	// removing it before appending the replacement. Unchanged mappings stay intact.
+	var toAdd []issueTypeScreenSchemeMappingItem
 	for issueTypeID, screenSchemeID := range planMappings {
+		if issueTypeID == "default" {
+			continue
+		}
 		if existing, ok := stateMappings[issueTypeID]; !ok || existing != screenSchemeID {
-			toAddOrUpdate = append(toAddOrUpdate, issueTypeScreenSchemeMappingItem{
+			toAdd = append(toAdd, issueTypeScreenSchemeMappingItem{
 				IssueTypeID:    issueTypeID,
 				ScreenSchemeID: screenSchemeID,
 			})
 		}
 	}
+	sort.Slice(toAdd, func(i, j int) bool { return toAdd[i].IssueTypeID < toAdd[j].IssueTypeID })
 
-	if len(toAddOrUpdate) > 0 {
-		addPath := fmt.Sprintf("/rest/api/3/issuetypescreenscheme/%s/mapping", atlassian.PathEscape(schemeID))
-		addBody := map[string][]issueTypeScreenSchemeMappingItem{
-			"issueTypeMappings": toAddOrUpdate,
-		}
-		if err := r.client.Put(ctx, addPath, addBody, nil); err != nil {
-			resp.Diagnostics.AddError("Error adding issue type screen scheme mappings", err.Error())
-			return
-		}
-	}
-
-	// Determine mappings to remove (in state but not in plan); skip "default"
 	var toRemove []string
-	for issueTypeID := range stateMappings {
+	for issueTypeID, screenSchemeID := range stateMappings {
 		if issueTypeID == "default" {
 			continue
 		}
-		if _, ok := planMappings[issueTypeID]; !ok {
+		if planned, ok := planMappings[issueTypeID]; !ok || planned != screenSchemeID {
 			toRemove = append(toRemove, issueTypeID)
 		}
 	}
+	sort.Strings(toRemove)
 
 	if len(toRemove) > 0 {
 		removePath := fmt.Sprintf("/rest/api/3/issuetypescreenscheme/%s/mapping/remove", atlassian.PathEscape(schemeID))
@@ -286,6 +291,17 @@ func (r *issueTypeScreenSchemeResource) Update(ctx context.Context, req resource
 		}
 		if err := r.client.Post(ctx, removePath, removeBody, nil); err != nil {
 			resp.Diagnostics.AddError("Error removing issue type screen scheme mappings", err.Error())
+			return
+		}
+	}
+
+	if len(toAdd) > 0 {
+		addPath := fmt.Sprintf("/rest/api/3/issuetypescreenscheme/%s/mapping", atlassian.PathEscape(schemeID))
+		addBody := map[string][]issueTypeScreenSchemeMappingItem{
+			"issueTypeMappings": toAdd,
+		}
+		if err := r.client.Put(ctx, addPath, addBody, nil); err != nil {
+			resp.Diagnostics.AddError("Error adding issue type screen scheme mappings", err.Error())
 			return
 		}
 	}

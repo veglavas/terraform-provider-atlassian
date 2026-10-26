@@ -139,7 +139,21 @@ func newIssueTypeScreenSchemeMockServer(state *issueTypeScreenSchemeMockState) *
 			state.mu.Unlock()
 			w.WriteHeader(http.StatusNoContent)
 
-		// Add/update mappings
+		// Default mappings use a separate endpoint.
+		case r.Method == "PUT" && r.URL.Path == "/rest/api/3/issuetypescreenscheme/"+fixedID+"/mapping/default":
+			var body struct {
+				ScreenSchemeID string `json:"screenSchemeId"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ScreenSchemeID == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			state.mu.Lock()
+			state.mappings["default"] = body.ScreenSchemeID
+			state.mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
+
+		// Append mappings: Jira rejects existing issue types, not an upsert.
 		case r.Method == "PUT" && r.URL.Path == "/rest/api/3/issuetypescreenscheme/"+fixedID+"/mapping":
 			var body struct {
 				IssueTypeMappings []struct {
@@ -152,6 +166,19 @@ func newIssueTypeScreenSchemeMockServer(state *issueTypeScreenSchemeMockState) *
 				return
 			}
 			state.mu.Lock()
+			seen := make(map[string]bool)
+			for _, m := range body.IssueTypeMappings {
+				_, exists := state.mappings[m.IssueTypeID]
+				if exists || seen[m.IssueTypeID] || m.IssueTypeID == "default" {
+					state.mu.Unlock()
+					w.WriteHeader(http.StatusBadRequest)
+					json.NewEncoder(w).Encode(map[string]any{
+						"errorMessages": []string{"One or more issue type IDs are already mapped, an issue type ID can only be mapped once."},
+					})
+					return
+				}
+				seen[m.IssueTypeID] = true
+			}
 			for _, m := range body.IssueTypeMappings {
 				state.mappings[m.IssueTypeID] = m.ScreenSchemeID
 			}
@@ -168,6 +195,13 @@ func newIssueTypeScreenSchemeMockServer(state *issueTypeScreenSchemeMockState) *
 				return
 			}
 			state.mu.Lock()
+			for _, id := range body.IssueTypeIDs {
+				if id == "default" {
+					state.mu.Unlock()
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
 			for _, id := range body.IssueTypeIDs {
 				delete(state.mappings, id)
 			}
@@ -301,6 +335,22 @@ func TestAccIssueTypeScreenSchemeResource_update(t *testing.T) {
 					resource.TestCheckResourceAttr("atlassian_jira_issue_type_screen_scheme.test", "mappings.default", "10001"),
 					resource.TestCheckResourceAttr("atlassian_jira_issue_type_screen_scheme.test", "mappings.10005", "10006"),
 					resource.TestCheckNoResourceAttr("atlassian_jira_issue_type_screen_scheme.test", "mappings.10003"),
+				),
+			},
+			// Remap an existing issue type and update the default without recreating the scheme.
+			{
+				Config: fmt.Sprintf(`resource "atlassian_jira_issue_type_screen_scheme" "test" {
+  name        = %q
+  description = "Updated description"
+  mappings = {
+    "default" = "10009"
+    "10005"   = "10008"
+  }
+}`, updatedName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("atlassian_jira_issue_type_screen_scheme.test", "id", "10002"),
+					resource.TestCheckResourceAttr("atlassian_jira_issue_type_screen_scheme.test", "mappings.default", "10009"),
+					resource.TestCheckResourceAttr("atlassian_jira_issue_type_screen_scheme.test", "mappings.10005", "10008"),
 				),
 			},
 		},

@@ -154,22 +154,42 @@ See the [Forms contract and limitations](docs/spec/jsm-form-templates.md) and [p
 make build
 ```
 
-### Install locally (dev_overrides)
+### Published provider (normal use)
+
+Use the registry provider for normal configuration, team, and CI workflows. After a release containing a change is published, run `terraform init -upgrade` or `tofu init -upgrade` and review the lockfile diff. Upgrading cannot add a resource that has not been merged and released.
+
+If you previously configured `dev_overrides` for this provider, remove that entry from your CLI configuration before using a registry release. Overrides bypass the installed provider and its locked version during plan/apply.
+
+### Install locally (optional development only)
 
 ```bash
 make install
 ```
 
-Then add to `~/.terraformrc` or `~/.tofurc`:
+This builds the **currently checked-out branch** and copies the binary to `$HOME/.local/share/terraform-provider-atlassian/dev`, outside the registry mirror directories. No release version is invented and no CLI configuration is changed. To use another directory, run `make install INSTALL_DIR=/absolute/path/to/dev-plugins`.
+
+For local testing only, create a separate CLI config file, for example `/absolute/path/to/atlassian-dev.tfrc`:
 
 ```hcl
 provider_installation {
   dev_overrides {
-    "registry.terraform.io/veglavas/atlassian" = "<directory containing the installed provider binary>"
+    "registry.terraform.io/veglavas/atlassian" = "/absolute/path/to/.local/share/terraform-provider-atlassian/dev"
   }
   direct {}
 }
 ```
+
+Replace the example paths with absolute paths on your machine; the HCL string does not expand `$HOME`. Scope the override to a single command rather than changing global configuration:
+
+```bash
+TF_CLI_CONFIG_FILE=/absolute/path/to/atlassian-dev.tfrc terraform plan
+# Or, for OpenTofu:
+TF_CLI_CONFIG_FILE=/absolute/path/to/atlassian-dev.tfrc tofu plan
+```
+
+Check for the development-overrides warning. Repeat `make install` after source changes; `make build` alone does not update the installed copy. Ensure the checked-out branch actually registers the resource you want to test. `init` still resolves registry dependencies and does not validate the development binary, so publishing is not required for this optional local loop.
+
+Do not commit a machine-specific CLI override or use this workflow as a substitute for publishing a reviewed release for teammates and CI.
 
 ### Run tests
 

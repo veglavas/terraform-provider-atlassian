@@ -1,4 +1,4 @@
-# In-place JML workflow management
+# In-place workflow adoption
 
 This example adopts an existing **company-managed** Jira project, workflow, and
 workflow scheme. It does not create temporary workflows or unassign projects.
@@ -19,7 +19,7 @@ be installed (for example using a Terraform CLI `dev_overrides` entry).
    ```hcl
    transitions = {
      "41" = {
-       name            = "Start mover process"
+       name            = "Start progress"
        type            = "DIRECTED"
        from_status_ids = ["YOUR_SOURCE_STATUS_ID"]
        to_status_id    = "YOUR_DESTINATION_STATUS_ID"

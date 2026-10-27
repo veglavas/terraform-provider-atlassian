@@ -12,16 +12,12 @@ variable "project_id" {
 }
 
 variable "forms" {
-  description = "Exactly joiner, mover and leaver; existing source templates, request types and question-to-custom-field mappings."
+  description = "Existing source templates, request types and question-to-custom-field mappings, keyed by a readable template name."
   type = map(object({
     source_template_id = string
     request_type_id    = string
     field_links        = map(string) # question ID => existing customfield_NNNNN
   }))
-  validation {
-    condition     = toset(keys(var.forms)) == toset(["joiner", "mover", "leaver"])
-    error_message = "Supply joiner, mover and leaver."
-  }
 }
 
 data "atlassian_jsm_form_template" "source" {
@@ -34,7 +30,7 @@ locals {
   designs = { for name, source in data.atlassian_jsm_form_template.source : name => jsondecode(source.design) }
 }
 
-resource "atlassian_jsm_form_template" "jml" {
+resource "atlassian_jsm_form_template" "managed" {
   for_each   = var.forms
   project_id = var.project_id
   design = jsonencode(merge(local.designs[each.key], {
@@ -60,5 +56,5 @@ resource "atlassian_jsm_form_template" "jml" {
 }
 
 output "form_ids" {
-  value = { for name, form in atlassian_jsm_form_template.jml : name => form.id }
+  value = { for name, form in atlassian_jsm_form_template.managed : name => form.id }
 }

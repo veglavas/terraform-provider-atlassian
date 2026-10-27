@@ -24,7 +24,7 @@ import (
 )
 
 const formTestID = "c18bde7a-d846-11ed-afa1-0242ac120002"
-const formTestDesign = `{"conditions":{},"layout":[{}],"questions":{"1":{"type":"ts","label":"Employee","jiraField":"customfield_10000","validation":{"rq":true}}},"sections":{},"settings":{"name":"Joiner","submit":{"lock":true,"pdf":false}}}`
+const formTestDesign = `{"conditions":{},"layout":[{}],"questions":{"1":{"type":"ts","label":"Employee","jiraField":"customfield_10000","validation":{"rq":true}}},"sections":{},"settings":{"name":"Example","submit":{"lock":true,"pdf":false}}}`
 const formTestPublish = `{"portal":{"portalRequestTypeIds":[63],"submitOnCreate":true,"validateOnCreate":true}}`
 
 type formTestTransport func(*http.Request) (*http.Response, error)
@@ -61,7 +61,7 @@ func mockFormClient(t *testing.T, h http.HandlerFunc) *atlassian.Client {
 	return client
 }
 func formTestModel() formTemplateModel {
-	return formTemplateModel{ID: types.StringValue(formTestID), ProjectID: types.StringValue("JML"), Design: formJSON{types.StringValue(formTestDesign)}, Publish: formJSON{types.StringValue(formTestPublish)}}
+	return formTemplateModel{ID: types.StringValue(formTestID), ProjectID: types.StringValue("SUPPORT"), Design: formJSON{types.StringValue(formTestDesign)}, Publish: formJSON{types.StringValue(formTestPublish)}}
 }
 func formTestState(t *testing.T, r *formTemplateResource) tfsdk.State {
 	t.Helper()
@@ -94,7 +94,7 @@ func TestFormTemplateReadAndDataSource(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := mockFormClient(t, func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != "GET" || !strings.HasSuffix(r.URL.Path, "/project/JML/form/"+formTestID) {
+				if r.Method != "GET" || !strings.HasSuffix(r.URL.Path, "/project/SUPPORT/form/"+formTestID) {
 					t.Error("wrong read")
 				}
 				w.WriteHeader(tc.status)
@@ -146,7 +146,7 @@ func TestFormTemplateWritesAndPartialPreservation(t *testing.T) {
 					if r.Method != method {
 						t.Errorf("unexpected %s", r.Method)
 					}
-					expected := "/project/JML/form"
+					expected := "/project/SUPPORT/form"
 					if method != "POST" {
 						expected += "/" + formTestID
 					}
@@ -227,10 +227,10 @@ func TestFormTemplateInvalidCreateAndImport(t *testing.T) {
 		})
 	}
 	r := &formTemplateResource{}
-	for _, id := range []string{"", "JML", "JML/not-a-uuid", "JML/" + formTestID + "/extra", "../" + formTestID, "JML/" + formTestID, "10001/" + formTestID} {
+	for _, id := range []string{"", "SUPPORT", "SUPPORT/not-a-uuid", "SUPPORT/" + formTestID + "/extra", "../" + formTestID, "SUPPORT/" + formTestID, "10001/" + formTestID} {
 		resp := resource.ImportStateResponse{State: formTestState(t, r)}
 		r.ImportState(t.Context(), resource.ImportStateRequest{ID: id}, &resp)
-		valid := id == "JML/"+formTestID || id == "10001/"+formTestID
+		valid := id == "SUPPORT/"+formTestID || id == "10001/"+formTestID
 		if resp.Diagnostics.HasError() == valid {
 			t.Fatalf("%s: %v", id, resp.Diagnostics)
 		}

@@ -22,14 +22,14 @@ const lifecycleFormID = "c18bde7a-d846-11ed-afa1-0242ac120002"
 // layout example; the mock does not claim it renders the linked question.
 const formLifecycleConfig = `
 resource "terraform_data" "references" {
- input = { project = "JML", request_type = 63, field = "customfield_10000" }
+ input = { project = "SUPPORT", request_type = 63, field = "customfield_10000" }
 }
 resource "atlassian_jsm_form_template" "test" {
  project_id = terraform_data.references.output.project
  design = jsonencode({
   conditions = {}, layout = [{}], sections = {},
   questions = { "1" = { label = "Employee", type = "ts", jiraField = terraform_data.references.output.field, validation = { rq = true } } },
-  settings = { name = "Joiner", submit = { lock = true, pdf = false } }
+  settings = { name = "Example", submit = { lock = true, pdf = false } }
  })
  publish = jsonencode({ portal = {
   portalRequestTypeIds = [tonumber(terraform_data.references.output.request_type)],
@@ -50,13 +50,13 @@ func TestFormTemplateLifecycle(t *testing.T) {
 	var pending bool
 	name := "tf-test-" + acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
 	updatedName := name + "-updated"
-	initialConfig := strings.Replace(formLifecycleConfig, `name = "Joiner"`, fmt.Sprintf("name = %q", name), 1)
+	initialConfig := strings.Replace(formLifecycleConfig, `name = "Example"`, fmt.Sprintf("name = %q", name), 1)
 	expectedName := name
 	expectedIDs := []any{float64(63)}
 	client := testutil.FormsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
-		base := testutil.FormsTestPrefix + "/project/JML/form"
+		base := testutil.FormsTestPrefix + "/project/SUPPORT/form"
 		switch {
 		case (r.Method == "POST" && r.URL.Path == base) || (r.Method == "PUT" && r.URL.Path == base+"/"+lifecycleFormID):
 			if r.Header.Get("Content-Type") != "application/json" {
@@ -124,7 +124,7 @@ func TestFormTemplateLifecycle(t *testing.T) {
 			w.WriteHeader(404)
 		}
 	})
-	updated := strings.Replace(formLifecycleConfig, `name = "Joiner"`, fmt.Sprintf("name = %q", updatedName), 1)
+	updated := strings.Replace(formLifecycleConfig, `name = "Example"`, fmt.Sprintf("name = %q", updatedName), 1)
 	unpublished := strings.Replace(updated, `[tonumber(terraform_data.references.output.request_type)]`, `[]`, 1)
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: testutil.ProtoV6ProviderFactoriesWithClient(client), CheckDestroy: func(_ *terraform.State) error {
 		mu.Lock()
@@ -135,7 +135,7 @@ func TestFormTemplateLifecycle(t *testing.T) {
 		return nil
 	}, Steps: []resource.TestStep{
 		{Config: initialConfig, Check: resource.ComposeAggregateTestCheckFunc(resource.TestCheckResourceAttr("atlassian_jsm_form_template.test", "id", lifecycleFormID), resource.TestCheckResourceAttr("data.atlassian_jsm_form_template.test", "id", lifecycleFormID), resource.TestCheckResourceAttrPair("data.atlassian_jsm_form_template.test", "design", "atlassian_jsm_form_template.test", "design"))},
-		{ResourceName: "atlassian_jsm_form_template.test", ImportState: true, ImportStateId: "JML/" + lifecycleFormID, ImportStateVerify: true},
+		{ResourceName: "atlassian_jsm_form_template.test", ImportState: true, ImportStateId: "SUPPORT/" + lifecycleFormID, ImportStateVerify: true},
 		{Config: initialConfig, PlanOnly: true, PreConfig: func() { mu.Lock(); enrich = true; mu.Unlock() }},
 		{Config: updated, PreConfig: func() { mu.Lock(); expectedName = updatedName; mu.Unlock() }},
 		{Config: updated, PlanOnly: true},

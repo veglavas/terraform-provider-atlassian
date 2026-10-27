@@ -2,7 +2,7 @@
 
 ## Goal
 
-Manage customer request types declaratively so the same Joiner/Mover/Leaver issue types and workflows can support direct Jira and portal entry. Keep the provider generic: no hardcoded project, organization, or workflow IDs. Do not change post-validation automation triggers.
+Manage customer request types declaratively so existing issue types and workflows can support direct Jira and portal entry. Keep the provider generic: no hardcoded project, organization, or workflow IDs. Do not change existing automation triggers.
 
 ## Resource and data source
 

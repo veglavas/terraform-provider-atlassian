@@ -95,6 +95,7 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_project_role` | Project role |
 | `atlassian_jira_project_role_actor` | Project role actor (user/group) |
 | `atlassian_jira_custom_field` | Custom field |
+| `atlassian_jira_field_scheme_requirement` | Per-issue-type required flag in an existing field association scheme (experimental API) |
 | `atlassian_jira_status` | Workflow status |
 | `atlassian_jira_workflow` | Workflow |
 | `atlassian_jira_workflow_scheme` | Workflow scheme |
@@ -121,6 +122,8 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_issue_type_scheme` | Look up an issue type scheme by name |
 | `atlassian_jira_project_role` | Look up a project role by name |
 | `atlassian_jira_custom_field` | Look up a custom field by name |
+| `atlassian_jira_field_scheme_requirement` | Read a field's effective required flag for an issue type |
+| `atlassian_jira_project_field_scheme` | Discover a project's existing field association scheme |
 | `atlassian_jira_status` | Look up a workflow status by name |
 | `atlassian_jira_workflow` | Look up a workflow by name |
 | `atlassian_jira_workflow_scheme` | Look up a workflow scheme by name |
@@ -134,7 +137,9 @@ data "atlassian_jira_project" "existing" {
 
 See the [JSM request-type guide](docs/guides/jsm-request-types.md) for API limitations, import, and portal setup boundaries.
 
-See the [Forms contract and limitations](docs/spec/jsm-form-templates.md) and [three JML forms example](examples/jml-forms/) for linked custom fields and request-type publishing. Valid existing design layouts are required; the public layout example is opaque. Forms management does not remove native Summary or guarantee a custom-fields-only portal.
+See the [field requirements guide](docs/guides/field-requirements.md) for per-issue-type constraints, shared-scheme safety, and the native portal boundary. This feature is under development; live API support is not yet verified.
+
+See the [Forms contract and limitations](docs/spec/jsm-form-templates.md) and [project templates example](examples/project-form-templates/) for linked custom fields and request-type publishing. Valid existing design layouts are required; the public layout example is opaque. Forms management does not remove native Summary or guarantee a custom-fields-only portal.
 
 ## Development
 

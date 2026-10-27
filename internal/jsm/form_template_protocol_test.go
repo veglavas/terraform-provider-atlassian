@@ -36,7 +36,7 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 			fmt.Fprintf(w, `{"cloudId":%q}`, testutil.FormsTestCloudID)
 			return w.Result(), nil
 		}
-		if r.URL.Host != "api.atlassian.com" || !strings.HasPrefix(r.URL.Path, testutil.FormsTestPrefix+"/project/JML/form") {
+		if r.URL.Host != "api.atlassian.com" || !strings.HasPrefix(r.URL.Path, testutil.FormsTestPrefix+"/project/SUPPORT/form") {
 			return nil, fmt.Errorf("unexpected mock destination")
 		}
 		switch r.Method {
@@ -110,7 +110,7 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 	check(configured.Diagnostics)
 	name := "atlassian_jsm_form_template"
 	typ := schemas.ResourceSchemas[name].ValueType()
-	design := `{"conditions":{},"layout":[{}],"questions":{"1":{"type":"ts","label":"Employee","jiraField":"customfield_10000","validation":{}}},"sections":{},"settings":{"name":"Joiner","submit":{"lock":true,"pdf":false}}}`
+	design := `{"conditions":{},"layout":[{}],"questions":{"1":{"type":"ts","label":"Employee","jiraField":"customfield_10000","validation":{}}},"sections":{},"settings":{"name":"Example","submit":{"lock":true,"pdf":false}}}`
 	publishing := `{"portal":{"portalRequestTypeIds":[63],"submitOnCreate":true,"validateOnCreate":true}}`
 	configValue := func(project, design, publish, id any) *tfprotov6.DynamicValue {
 		return dynamic(typ, map[string]tftypes.Value{"project_id": tftypes.NewValue(tftypes.String, project), "design": tftypes.NewValue(tftypes.String, design), "publish": tftypes.NewValue(tftypes.String, publish), "id": tftypes.NewValue(tftypes.String, id)})
@@ -122,7 +122,7 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 	}
 	check(validation.Diagnostics)
 	for _, bad := range []struct{ design, publish string }{{`[]`, publishing}, {design, `{"portal":{"portalRequestTypeIds":["63"]}}`}, {`{}`, publishing}} {
-		v, err := server.ValidateResourceConfig(t.Context(), &tfprotov6.ValidateResourceConfigRequest{TypeName: name, Config: configValue("JML", bad.design, bad.publish, nil)})
+		v, err := server.ValidateResourceConfig(t.Context(), &tfprotov6.ValidateResourceConfigRequest{TypeName: name, Config: configValue("SUPPORT", bad.design, bad.publish, nil)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,7 +134,7 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 			t.Fatal("invalid JSON schema accepted")
 		}
 	}
-	config := configValue("JML", design, publishing, nil)
+	config := configValue("SUPPORT", design, publishing, nil)
 	valid, err := server.ValidateResourceConfig(t.Context(), &tfprotov6.ValidateResourceConfigRequest{TypeName: name, Config: config})
 	if err != nil {
 		t.Fatal(err)
@@ -177,13 +177,13 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 		t.Fatal("semantic equality failed to preserve configured JSON")
 	}
 	dsType := schemas.DataSourceSchemas[name].ValueType()
-	dsConfig := dynamic(dsType, map[string]tftypes.Value{"project_id": tftypes.NewValue(tftypes.String, "JML"), "id": tftypes.NewValue(tftypes.String, lifecycleFormID), "design": tftypes.NewValue(tftypes.String, nil), "publish": tftypes.NewValue(tftypes.String, nil)})
+	dsConfig := dynamic(dsType, map[string]tftypes.Value{"project_id": tftypes.NewValue(tftypes.String, "SUPPORT"), "id": tftypes.NewValue(tftypes.String, lifecycleFormID), "design": tftypes.NewValue(tftypes.String, nil), "publish": tftypes.NewValue(tftypes.String, nil)})
 	ds, err := server.ReadDataSource(t.Context(), &tfprotov6.ReadDataSourceRequest{TypeName: name, Config: dsConfig})
 	if err != nil {
 		t.Fatal(err)
 	}
 	check(ds.Diagnostics)
-	imported, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: name, ID: "JML/" + lifecycleFormID})
+	imported, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: name, ID: "SUPPORT/" + lifecycleFormID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,10 +197,10 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 	}
 	check(ir.Diagnostics)
 	// Change publishing and design in place, using retained private state.
-	updatedDesign := strings.Replace(design, "Joiner", "Mover", 1)
+	updatedDesign := strings.Replace(design, "Example", "Updated", 1)
 	updatedPublishing := strings.Replace(publishing, "[63]", "[]", 1)
-	nextConfig := configValue("JML", updatedDesign, updatedPublishing, nil)
-	nextProposed := configValue("JML", updatedDesign, updatedPublishing, lifecycleFormID)
+	nextConfig := configValue("SUPPORT", updatedDesign, updatedPublishing, nil)
+	nextProposed := configValue("SUPPORT", updatedDesign, updatedPublishing, lifecycleFormID)
 	nextPlan, err := server.PlanResourceChange(t.Context(), &tfprotov6.PlanResourceChangeRequest{TypeName: name, Config: nextConfig, PriorState: refreshed.NewState, ProposedNewState: nextProposed, PriorPrivate: refreshed.Private})
 	if err != nil {
 		t.Fatal(err)
@@ -224,9 +224,9 @@ func TestFormTemplateProtocolLifecycle(t *testing.T) {
 
 	// Removing publish from configuration must preserve the last observed settings
 	// through a design update, and switch subsequent reads to full observation.
-	omittedDesign := strings.Replace(updatedDesign, "Mover", "Leaver", 1)
-	omittedConfig := configValue("JML", omittedDesign, nil, nil)
-	omittedPlan, err := server.PlanResourceChange(t.Context(), &tfprotov6.PlanResourceChangeRequest{TypeName: name, Config: omittedConfig, PriorState: updatedRead.NewState, ProposedNewState: configValue("JML", omittedDesign, nil, lifecycleFormID), PriorPrivate: updatedRead.Private})
+	omittedDesign := strings.Replace(updatedDesign, "Updated", "Revised", 1)
+	omittedConfig := configValue("SUPPORT", omittedDesign, nil, nil)
+	omittedPlan, err := server.PlanResourceChange(t.Context(), &tfprotov6.PlanResourceChangeRequest{TypeName: name, Config: omittedConfig, PriorState: updatedRead.NewState, ProposedNewState: configValue("SUPPORT", omittedDesign, nil, lifecycleFormID), PriorPrivate: updatedRead.Private})
 	if err != nil {
 		t.Fatal(err)
 	}

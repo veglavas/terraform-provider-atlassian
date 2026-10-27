@@ -1,11 +1,11 @@
-# Three JML portal templates
+# Project form templates
 
-This configuration manages Joiner, Mover and Leaver Forms templates, linking
+This configuration manages Forms templates with caller-selected names, linking
 existing compatible Jira custom fields with `jiraField` and associating existing
 request types through `publish.portal.portalRequestTypeIds`. It requires the
 feature build of this provider. No UI actions are part of the configuration.
 
-Supply `project_id` and a `forms` map with exactly `joiner`, `mover`, `leaver`.
+Supply `project_id` and a `forms` map with readable keys of your choice.
 Each entry contains an existing `source_template_id`, an existing
 `request_type_id`, and `field_links` mapping **existing source question IDs** to
 Jira IDs such as `customfield_10042`. Preserve the source question type and ensure
@@ -23,7 +23,7 @@ module; unknown values defer until apply. Request IDs become JSON numbers via
 not a usable question layout. This example therefore requires existing reusable
 templates. You can instead supply a previously retrieved valid design JSON file
 using `jsondecode(file(...))`. We do not provide invented ADF widgets or claim
-three new useful forms can be bootstrapped solely from the published example.
+new useful forms can be bootstrapped solely from the published example.
 Source templates must differ from the managed target templates. To manage existing
 targets directly, import their project/UUID and supply their design.
 

@@ -127,13 +127,13 @@ ADF widgets.
 
 The [resource example](../../examples/resources/atlassian_jsm_form_template/resource.tf)
 retrieves a valid source design with the data source and maps a source question
-to `customfield_...` using `jiraField`. The [three-form JML example](../../examples/jml-forms/)
-manages joiner/mover/leaver templates, preserves valid layouts and maps existing
+to `customfield_...` using `jiraField`. The [project templates example](../../examples/project-form-templates/)
+manages caller-selected templates, preserves valid layouts and maps existing
 questions to existing custom fields and request types. Designs can also be
 provided as normalized JSON from a previously retrieved template. Neither path
 requires UI clicking when valid source designs already exist. Bootstrapping
 useful forms from nothing remains blocked by the missing public Forms layout
-contract; we do not represent the official placeholder as a working JML design.
+contract; we do not represent the official placeholder as a working question layout.
 
 ## Field linking, Summary and cascading selects
 

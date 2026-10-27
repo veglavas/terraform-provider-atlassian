@@ -37,7 +37,7 @@ resource "atlassian_jsm_request_type" "lifecycle" {
 }
 ```
 
-For example, map onboarding, transfer, and offboarding request types to your existing Joiner, Mover, and Leaver issue types. Keep existing workflow/automation references; do not create duplicate issue types. Creating request types does not change when automation runs or automatically assign a request type to work items created directly in Jira.
+For example, map equipment and access request types to your existing service-request issue types. Keep existing workflow/automation references; do not create duplicate issue types. Creating request types does not change when automation runs or automatically assign a request type to work items created directly in Jira.
 
 No manual service desk ID discovery is required. `data.atlassian_jsm_service_desk.service` finds the desk by the managed project's generated ID. Terraform defers the lookup until apply when that ID is unknown, then passes the discovered desk ID to request types. The lookup follows all pages, rejects ambiguous or malformed results, and retries absence for up to 30 seconds while a new desk becomes visible. It can only discover desks the authenticated user can access; a non-service project or inaccessible desk produces an actionable error, not a guessed ID. Retry if provisioning takes longer.
 

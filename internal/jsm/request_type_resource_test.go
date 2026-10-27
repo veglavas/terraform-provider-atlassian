@@ -140,7 +140,7 @@ func TestRequestTypeDelete(t *testing.T) {
 func TestRequestTypeImport(t *testing.T) {
 	ctx := context.Background()
 	r := &requestTypeResource{}
-	for _, id := range []string{"", "2", "/10", "2/", "2/10/3", "JML/10", "2/abc", "2/10"} {
+	for _, id := range []string{"", "2", "/10", "2/", "2/10/3", "SUPPORT/10", "2/abc", "2/10"} {
 		t.Run(id, func(t *testing.T) {
 			resp := resource.ImportStateResponse{State: testState(t, r)}
 			r.ImportState(ctx, resource.ImportStateRequest{ID: id}, &resp)

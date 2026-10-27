@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.14](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.13...v0.1.14) (2026-10-27)
+
+
+### Bug Fixes
+
+* correct provider development workflow and JSM label guidance ([d727b33](https://github.com/veglavas/terraform-provider-atlassian/commit/d727b33b8ed7ede96ce5515b6319d72b5782e2f1))
+* isolate local provider installs from registry releases ([e14a281](https://github.com/veglavas/terraform-provider-atlassian/commit/e14a28131be0f3c3399498a0c2dc95f8787c1f36))
+
 ## [0.1.13](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.12...v0.1.13) (2026-10-27)
 
 

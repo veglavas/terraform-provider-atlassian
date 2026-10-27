@@ -58,13 +58,23 @@ Creation preserves configured attributes because POST responses can be partial a
 New request types have **no portal groups**, so they are hidden from portal browsing. The API also defaults the icon, inherits issue-type status mappings, and exposes required issue-type fields. The provider does not configure:
 
 - Portal group assignment/visibility.
-- Request-form field layout and additional fields.
+- Native request-form field labels, help text, required flags, layout, or additional fields.
 - Icons or customer-facing status mappings.
 - Request restrictions, customer access, notifications, or sharing policies.
 
 Configure these separately in Jira's request-type settings. `group_ids` and `portal_id` are read-only observations; manual grouping is not undone by Terraform. Adding groups does not establish access controls. For sensitive employee requests, verify customer visibility/sharing and notification settings before broad rollout.
 
 For direct Jira entry, select the matching request type when creating the parent. For portal entry, the chosen request type supplies the issue-type association. Neither path requires duplicate custom fields or workflows.
+
+### Friendly field labels in the customer portal
+
+To keep a namespaced custom field such as `jmlGivenName` while showing **Given Name** to customers, open the request type's **Request form** editor in Jira Service Management, select the field, and set **Display name** to **Given Name**. Repeat for each request type that uses the field. Atlassian documents these controls in [Customize the fields of a request type](https://support.atlassian.com/jira-service-management-cloud/docs/customize-the-fields-of-a-request-type/). This is the native request form, not a separate JSM Forms template. The portal label does not rename the underlying Jira field or change its ID; agents using the standard Jira Create dialog still see the real field name.
+
+This label override must currently be configured in Jira's UI, not Terraform. There is **no supported `atlassian_jsm_request_type_field` resource** in this provider. Installing a newer version or using a development override does not provide that resource.
+
+The [published JSM Cloud OpenAPI contract](https://dac-static.atlassian.com/cloud/jira/service-desk/swagger.v3.json) exposes only **GET**, not PUT, at `/rest/servicedeskapi/servicedesk/{serviceDeskId}/requesttype/{requestTypeId}/field`. The response contains a `requestTypeFields` array and permission flags; it is not a paginated `values` response. There is no documented field-label write operation at this path, experimental or otherwise. Adding `X-ExperimentalApi: opt-in` does not create one. Private UI APIs have not been validated and are not used by this provider.
+
+`atlassian_jsm_form_template` manages a different Forms API; it does not configure native request-form field labels. See the [Forms limitations](../spec/jsm-form-templates.md) for that distinction.
 
 ## Import existing request types
 

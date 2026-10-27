@@ -126,7 +126,7 @@ func TestFormsRoutingAndNoPostRetries(t *testing.T) {
 					fmt.Fprintf(w, `{"cloudId":%q}`, testFormsCloudID)
 					return
 				}
-				if r.Method != "POST" || r.Host != "api.atlassian.com" || r.URL.Path != "/jira/forms/cloud/"+testFormsCloudID+"/project/JML/form" {
+				if r.Method != "POST" || r.Host != "api.atlassian.com" || r.URL.Path != "/jira/forms/cloud/"+testFormsCloudID+"/project/SUPPORT/form" {
 					t.Error("incorrect Forms route")
 				}
 				if r.Header.Get("Content-Type") != "application/json" {
@@ -144,7 +144,7 @@ func TestFormsRoutingAndNoPostRetries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = f.Post(t.Context(), "/project/JML/form", map[string]any{"design": map[string]any{}}, nil)
+			err = f.Post(t.Context(), "/project/SUPPORT/form", map[string]any{"design": map[string]any{}}, nil)
 			if (err != nil) != (status != 200) {
 				t.Fatal(err)
 			}
@@ -183,7 +183,7 @@ func TestFormsRejectRedirects(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = f.Post(t.Context(), "/project/JML/form", map[string]any{}, nil); err == nil {
+			if err = f.Post(t.Context(), "/project/SUPPORT/form", map[string]any{}, nil); err == nil {
 				t.Fatal("Forms redirect accepted")
 			}
 		})
@@ -222,7 +222,7 @@ func TestFormsReadAndPutReuseRetries(t *testing.T) {
 			if method == "PUT" {
 				body = []byte(`{"design":{}}`)
 			}
-			resp, err := f.Do(ctx, method, "/project/JML/form", body)
+			resp, err := f.Do(ctx, method, "/project/SUPPORT/form", body)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -12,13 +12,13 @@ Reads an Atlassian Forms project template by project and UUID, using Basic authe
 ## Example Usage
 
 ```terraform
-data "atlassian_jsm_form_template" "joiner" {
+data "atlassian_jsm_form_template" "example" {
   project_id = "10001"
   id         = "c18bde7a-d846-11ed-afa1-0242ac120002"
 }
 
 output "joiner_design" {
-  value = jsondecode(data.atlassian_jsm_form_template.joiner.design)
+  value = jsondecode(data.atlassian_jsm_form_template.example.design)
 }
 ```
 

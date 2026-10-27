@@ -134,7 +134,7 @@ data "atlassian_jira_project" "existing" {
 
 See the [JSM request-type guide](docs/guides/jsm-request-types.md) for API limitations, import, and portal setup boundaries.
 
-See the [Forms contract and limitations](docs/spec/jsm-form-templates.md) and [three JML forms example](examples/jml-forms/) for linked custom fields and request-type publishing. Valid existing design layouts are required; the public layout example is opaque. Forms management does not remove native Summary or guarantee a custom-fields-only portal.
+See the [Forms contract and limitations](docs/spec/jsm-form-templates.md) and [project templates example](examples/project-form-templates/) for linked custom fields and request-type publishing. Valid existing design layouts are required; the public layout example is opaque. Forms management does not remove native Summary or guarantee a custom-fields-only portal.
 
 ## Development
 

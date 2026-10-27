@@ -115,7 +115,7 @@ func TestRequestTypeValidation(t *testing.T) {
 	t.Setenv("ATLASSIAN_USER", "test")
 	t.Setenv("ATLASSIAN_TOKEN", "test")
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: testutil.ProtoV6ProviderFactories, Steps: []resource.TestStep{{Config: `resource "atlassian_jsm_request_type" "test" {
- service_desk_id = "JML"
+ service_desk_id = "SUPPORT"
  issue_type_id = "10001"
  name = "Test"
 }`, ExpectError: regexp.MustCompile("must be a numeric ID")}}})

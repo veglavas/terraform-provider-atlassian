@@ -30,10 +30,10 @@ locals {
   source_design = jsondecode(data.atlassian_jsm_form_template.source.design)
 }
 
-resource "atlassian_jsm_form_template" "joiner" {
+resource "atlassian_jsm_form_template" "example" {
   project_id = var.project_id
   design = jsonencode(merge(local.source_design, {
-    settings = merge(local.source_design.settings, { name = "Joiner" })
+    settings = merge(local.source_design.settings, { name = "Equipment request" })
     questions = merge(local.source_design.questions, {
       (var.employee_question_id) = merge(local.source_design.questions[var.employee_question_id], {
         # Existing compatible Jira field; preserve the source question and layout.
@@ -72,5 +72,5 @@ resource "atlassian_jsm_form_template" "joiner" {
 Import is supported using the following syntax:
 
 ```shell
-terraform import atlassian_jsm_form_template.joiner '10001/c18bde7a-d846-11ed-afa1-0242ac120002'
+terraform import atlassian_jsm_form_template.example '10001/c18bde7a-d846-11ed-afa1-0242ac120002'
 ```

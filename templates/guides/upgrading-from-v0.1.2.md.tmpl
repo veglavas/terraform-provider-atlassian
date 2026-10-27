@@ -84,7 +84,7 @@ Jira's task: inspect Jira and refresh state before retrying. Do not run competin
 workflow changes concurrently against the same scheme; consider `-parallelism=1`
 for related workflow and scheme migrations.
 
-See `examples/jml-workflow` for adoption and in-place updates. Mock tests cover
+See `examples/workflow-adoption` for adoption and in-place updates. Mock tests cover
 validation, preservation, conflicts, mapping requirements, task failures, and
 association drift. The opt-in `TestIntegrationWorkflowManagement_populatedProject`
 creates a disposable project and issue, updates an active workflow and scheme,

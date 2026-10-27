@@ -26,10 +26,10 @@ func TestWorkflowSchemeUpdateGroupsIssueTypesByWorkflow(t *testing.T) {
 		},
 		{
 			name:        "multiple-workflows",
-			assignments: map[string]string{"10302": "Joiner", "10301": "Generic", "10300": "Generic"},
+			assignments: map[string]string{"10302": "Support", "10301": "Generic", "10300": "Generic"},
 			want: []schemeWorkflowAssociation{
 				{WorkflowID: "workflow-generic", IssueTypeIDs: []string{"10300", "10301"}},
-				{WorkflowID: "workflow-joiner", IssueTypeIDs: []string{"10302"}},
+				{WorkflowID: "workflow-support", IssueTypeIDs: []string{"10302"}},
 			},
 		},
 		{
@@ -64,7 +64,7 @@ func TestWorkflowSchemeUpdateGroupsIssueTypesByWorkflow(t *testing.T) {
 						w.WriteHeader(http.StatusBadRequest)
 						return
 					}
-					id := map[string]string{"Generic": "workflow-generic", "Joiner": "workflow-joiner"}[body.Names[0]]
+					id := map[string]string{"Generic": "workflow-generic", "Support": "workflow-support"}[body.Names[0]]
 					if id == "" {
 						t.Errorf("unexpected workflow name %q", body.Names[0])
 					}
@@ -119,7 +119,7 @@ func TestWorkflowSchemeUpdateGroupsIssueTypesByWorkflow(t *testing.T) {
 				t.Fatal(diags)
 			}
 			plan := workflowSchemeResourceModel{
-				Name: types.StringValue("JML"), Description: types.StringValue("Managed"),
+				Name: types.StringValue("Support"), Description: types.StringValue("Managed"),
 				DefaultWorkflow: types.StringValue("Generic"), IssueTypeMappings: assignments,
 				StatusMappings: types.MapNull(types.MapType{ElemType: types.StringType}),
 			}

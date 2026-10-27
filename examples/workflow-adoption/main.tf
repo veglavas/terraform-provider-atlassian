@@ -18,7 +18,7 @@ variable "project_id" { type = string }
 variable "status_ids" { type = list(string) }
 variable "description" {
   type    = string
-  default = "JML: joiner, mover and leaver lifecycle managed in place"
+  default = "Workflow managed in place with Terraform"
 }
 variable "transitions" {
   type = map(object({
@@ -39,19 +39,19 @@ variable "scheme_status_mappings" {
 }
 
 import {
-  to = atlassian_jira_workflow.jml
+  to = atlassian_jira_workflow.managed
   id = var.workflow_id
 }
 import {
-  to = atlassian_jira_workflow_scheme.jml
+  to = atlassian_jira_workflow_scheme.managed
   id = var.workflow_scheme_id
 }
 import {
-  to = atlassian_jira_project_workflow_scheme.jml
+  to = atlassian_jira_project_workflow_scheme.managed
   id = var.project_id
 }
 
-resource "atlassian_jira_workflow" "jml" {
+resource "atlassian_jira_workflow" "managed" {
   name            = var.workflow_name
   description     = var.description
   statuses        = var.status_ids
@@ -60,17 +60,17 @@ resource "atlassian_jira_workflow" "jml" {
   lifecycle { prevent_destroy = true }
 }
 
-resource "atlassian_jira_workflow_scheme" "jml" {
+resource "atlassian_jira_workflow_scheme" "managed" {
   name             = var.workflow_scheme_name
-  default_workflow = atlassian_jira_workflow.jml.name
+  default_workflow = atlassian_jira_workflow.managed.name
   status_mappings  = var.scheme_status_mappings
   # Omitted issue_type_mappings are read from Jira and preserved.
   lifecycle { prevent_destroy = true }
 }
 
-resource "atlassian_jira_project_workflow_scheme" "jml" {
+resource "atlassian_jira_project_workflow_scheme" "managed" {
   project_id         = var.project_id
-  workflow_scheme_id = atlassian_jira_workflow_scheme.jml.id
+  workflow_scheme_id = atlassian_jira_workflow_scheme.managed.id
   status_mappings    = var.scheme_status_mappings
   lifecycle { prevent_destroy = true }
 }

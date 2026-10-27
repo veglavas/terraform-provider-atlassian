@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.12](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.11...v0.1.12) (2026-10-27)
+
+
+### Features
+
+* import and manage Jira field schemes ([b31170c](https://github.com/veglavas/terraform-provider-atlassian/commit/b31170c8d4eb16869978627f7efe99891c4eefa8))
+* import and manage Jira field schemes ([fc43585](https://github.com/veglavas/terraform-provider-atlassian/commit/fc43585c7e0b3b707959a4db78a1b19c1efb2a84))
+
 ## [0.1.11](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.10...v0.1.11) (2026-10-27)
 
 

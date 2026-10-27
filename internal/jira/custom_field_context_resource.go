@@ -85,7 +85,23 @@ func (r *customFieldContextResource) ModifyPlan(ctx context.Context, req resourc
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		destructive = !plan.FieldID.Equal(state.FieldID) || !plan.ProjectIDs.Equal(state.ProjectIDs) || !plan.IssueTypeIDs.Equal(state.IssueTypeIDs)
+		// Dependencies can become unknown during an otherwise in-place update.
+		// Only confirmed changes are destructive; Terraform plans again once
+		// unknown values resolve. IsFullyKnown also checks set elements.
+		for _, pair := range [][2]attr.Value{
+			{plan.FieldID, state.FieldID},
+			{plan.ProjectIDs, state.ProjectIDs},
+			{plan.IssueTypeIDs, state.IssueTypeIDs},
+		} {
+			value, err := pair[0].ToTerraformValue(ctx)
+			if err != nil {
+				resp.Diagnostics.AddError("Error checking global context plan", err.Error())
+				return
+			}
+			if value.IsFullyKnown() && !pair[0].Equal(pair[1]) {
+				destructive = true
+			}
+		}
 	}
 	if destructive {
 		resp.Diagnostics.AddError("Global context cannot be destroyed or replaced", "Jira prohibits deleting global custom field contexts. Keep its current field and scope. To stop managing it without deleting it, use a removed block with lifecycle { destroy = false } (Terraform 1.7+) or carefully remove only its state entry. Protect dependent options with prevent_destroy and review the entire plan; retaining a context does not retain options removed from configuration. Scope migration requires a separate, explicitly planned Jira migration.")

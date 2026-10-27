@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.11](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.10...v0.1.11) (2026-10-27)
+
+
+### Features
+
+* manage per-issue-type field scheme requirements ([3a8ce81](https://github.com/veglavas/terraform-provider-atlassian/commit/3a8ce813fe5446d8153a3235b757edded754dc67))
+* manage per-issue-type field scheme requirements ([2d8f136](https://github.com/veglavas/terraform-provider-atlassian/commit/2d8f1368b17646b38ca473b73a3f64b7858a14c6))
+
 ## [0.1.10](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.9...v0.1.10) (2026-10-26)
 
 

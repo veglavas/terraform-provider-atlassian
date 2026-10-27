@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.13](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.12...v0.1.13) (2026-10-27)
+
+
+### Bug Fixes
+
+* avoid blocking global context plans with unknown values ([b66b026](https://github.com/veglavas/terraform-provider-atlassian/commit/b66b026472e74a71a088e36009c95e50c8cf0297))
+* defer global context replacement checks for unknown values ([3016a15](https://github.com/veglavas/terraform-provider-atlassian/commit/3016a1514e598b82f3ff919f0c99bf3c0e7610f3))
+
 ## [0.1.12](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.11...v0.1.12) (2026-10-27)
 
 

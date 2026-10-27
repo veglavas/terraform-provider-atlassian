@@ -29,7 +29,19 @@ func TestFieldContextGlobalDestructivePlans(t *testing.T) {
 			m.IssueTypeIDs = types.SetValueMust(types.StringType, []attr.Value{types.StringValue("10010")})
 		}, wantError: true},
 		{name: "global field change", change: func(m *customFieldContextModel) { m.FieldID = types.StringValue("customfield_10001") }, wantError: true},
-		{name: "unknown project scope", change: func(m *customFieldContextModel) { m.ProjectIDs = types.SetUnknown(types.StringType) }, wantError: true},
+		{name: "unknown field after rename", change: func(m *customFieldContextModel) { m.FieldID = types.StringUnknown() }},
+		{name: "unknown project scope", change: func(m *customFieldContextModel) { m.ProjectIDs = types.SetUnknown(types.StringType) }},
+		{name: "unknown issue scope", change: func(m *customFieldContextModel) { m.IssueTypeIDs = types.SetUnknown(types.StringType) }},
+		{name: "unknown project in scope", change: func(m *customFieldContextModel) {
+			m.ProjectIDs = types.SetValueMust(types.StringType, []attr.Value{types.StringUnknown()})
+		}},
+		{name: "unknown issue type in scope", change: func(m *customFieldContextModel) {
+			m.IssueTypeIDs = types.SetValueMust(types.StringType, []attr.Value{types.StringUnknown()})
+		}},
+		{name: "known scope change with unknown field", change: func(m *customFieldContextModel) {
+			m.FieldID = types.StringUnknown()
+			m.ProjectIDs = types.SetValueMust(types.StringType, []attr.Value{types.StringValue("10001")})
+		}, wantError: true},
 		{name: "metadata update", change: func(m *customFieldContextModel) {
 			m.Name = types.StringValue("Renamed")
 			m.Description = types.StringValue("Changed")

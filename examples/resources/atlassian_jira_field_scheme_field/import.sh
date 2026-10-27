@@ -1,0 +1,1 @@
+terraform import atlassian_jira_field_scheme_field.managed '10000:customfield_10000'

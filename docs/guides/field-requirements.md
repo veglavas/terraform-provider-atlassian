@@ -28,9 +28,74 @@ It does not use the deprecated field-configuration API.
   by this implementation's local tests. Validate in a disposable environment
   before production use. No tenant mutations are part of the unit tests.
 
-Use `data.atlassian_jira_project_field_scheme` to discover a project's scheme ID,
-name, and description rather than guessing a legacy field-configuration ID.
-Discovery is read-only and does not change a project's scheme assignment.
+## Import and own the scheme
+
+Use `atlassian_jira_field_scheme` to import and manage an existing scheme's name
+and description. Import does not automatically take ownership of its fields,
+requirements, or project assignments. Declare and import those separately:
+
+```hcl
+resource "atlassian_jira_field_scheme" "managed" {
+  name        = "Example field scheme"
+  description = "Managed by Terraform"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "atlassian_jira_field_scheme_field" "department" {
+  scheme_id      = atlassian_jira_field_scheme.managed.id
+  field_id       = "customfield_10000"
+  issue_type_ids = ["10001", "10002"]
+}
+
+resource "atlassian_jira_project_field_scheme" "managed" {
+  project_id           = var.project_id
+  scheme_id            = atlassian_jira_field_scheme.managed.id
+  on_destroy_scheme_id = var.fallback_scheme_id
+}
+
+resource "atlassian_jira_field_scheme_requirement" "department" {
+  scheme_id     = atlassian_jira_field_scheme.managed.id
+  field_id      = atlassian_jira_field_scheme_field.department.field_id
+  issue_type_id = "10001"
+  is_required   = true
+}
+```
+
+```shell
+terraform import atlassian_jira_field_scheme.managed 10000
+terraform import atlassian_jira_field_scheme_field.department '10000:customfield_10000'
+terraform import atlassian_jira_project_field_scheme.managed 10003
+terraform import atlassian_jira_field_scheme_requirement.department '10000:customfield_10000:10001'
+terraform plan
+```
+
+Use actual existing metadata and restrictions for initial adoption; inspect the
+plan before making intentional changes. Do not guess modern scheme IDs from
+legacy field-configuration IDs. Read-only discovery is available through
+`data.atlassian_jira_project_field_scheme`, but is not required once a scheme is
+imported and referenced as a resource. See the complete
+[adoption example](../../examples/field-scheme-adoption/).
+
+### Ownership and destroy behavior
+
+- The scheme resource owns metadata only. Unlisted fields and project assignments
+  are not removed. Jira rejects deletion of system schemes and schemes in use.
+- A field-association resource owns its **complete** issue-type restriction set;
+  empty or omitted `issue_type_ids` means all issue types. Updates replace that
+  restriction set. Destroy removes the association and can remove its field
+  parameters and issue-type overrides. Reference associations from requirements
+  so Terraform destroys requirements first.
+- Project assignments update in place. Jira exposes no unassignment operation.
+  Omit `on_destroy_scheme_id` to retain the remote assignment and relinquish
+  ownership, or explicitly provide an existing fallback scheme for reassignment
+  on destroy. No default scheme ID or previous assignment is guessed. Retention
+  can block deletion of the assigned scheme.
+- Match the project-assignment import ID to the actual project ID. Import reads
+  its current scheme; changing `scheme_id` plans an intentional reassignment.
+  `on_destroy_scheme_id` is local policy and is not discovered by import.
 
 ## Managing selected requirements
 

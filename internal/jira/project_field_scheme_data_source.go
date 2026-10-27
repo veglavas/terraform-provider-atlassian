@@ -17,7 +17,7 @@ var _ datasource.DataSource = &projectFieldSchemeDataSource{}
 func NewProjectFieldSchemeDataSource() datasource.DataSource { return &projectFieldSchemeDataSource{} }
 
 type projectFieldSchemeDataSource struct{ client *atlassian.Client }
-type projectFieldSchemeModel struct {
+type projectFieldSchemeDataSourceModel struct {
 	ProjectID   types.String `tfsdk:"project_id"`
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
@@ -50,7 +50,7 @@ func (d *projectFieldSchemeDataSource) Configure(_ context.Context, req datasour
 	d.client = client
 }
 func (d *projectFieldSchemeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config projectFieldSchemeModel
+	var config projectFieldSchemeDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return

@@ -1,0 +1,1 @@
+terraform import atlassian_jira_project_field_scheme.managed 10002

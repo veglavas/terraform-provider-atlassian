@@ -1,14 +1,16 @@
 BINARY_NAME=terraform-provider-atlassian
-INSTALL_DIR=$(HOME)/.terraform.d/plugins/registry.terraform.io/veglavas/atlassian/0.1.3/$$(go env GOOS)_$$(go env GOARCH)
+# Development overrides read binaries directly; they need no registry version layout.
+INSTALL_DIR?=$(HOME)/.local/share/terraform-provider-atlassian/dev
 
 .PHONY: build install test testacc lint clean testintegration sweep
 
 build:
-	go build -o $(BINARY_NAME)
+	go build -o "$(BINARY_NAME)"
 
 install: build
-	mkdir -p $(INSTALL_DIR)
-	cp $(BINARY_NAME) $(INSTALL_DIR)/
+	mkdir -p "$(INSTALL_DIR)"
+	cp "$(BINARY_NAME)" "$(INSTALL_DIR)/"
+	@printf 'Development provider installed in %s\n' "$(INSTALL_DIR)"
 
 test:
 	go test ./... -v -count=1
@@ -20,7 +22,7 @@ lint:
 	golangci-lint run ./...
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -f "$(BINARY_NAME)"
 
 testintegration: ## Run integration tests against real Jira (requires ATLASSIAN_URL, ATLASSIAN_USER, ATLASSIAN_TOKEN, ATLASSIAN_SWEEP_CONFIRM=<host>)
 	TF_ACC=1 go test ./internal/jira/... -v -count=1 -timeout 30m -run '^TestIntegration'

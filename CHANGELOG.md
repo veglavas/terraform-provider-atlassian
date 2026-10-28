@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.15](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.14...v0.1.15) (2026-10-28)
+
+
+### Features
+
+* manage Jira screen tab field order ([c50742c](https://github.com/veglavas/terraform-provider-atlassian/commit/c50742ccb9af533da5f1408e7c71af10042f0502))
+* manage Jira screen tab field order ([681cc08](https://github.com/veglavas/terraform-provider-atlassian/commit/681cc082dbbd62ebc41c027a800e17302512653a))
+
 ## [0.1.14](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.13...v0.1.14) (2026-10-27)
 
 

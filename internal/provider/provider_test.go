@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/lbajsarowicz/terraform-provider-atlassian/internal/provider"
 )
 
@@ -59,6 +60,64 @@ func TestFormTemplateRegistration(t *testing.T) {
 	for kind, schema := range map[string]*tfprotov6.Schema{"resource": schemas.ResourceSchemas["atlassian_jsm_form_template"], "data source": schemas.DataSourceSchemas["atlassian_jsm_form_template"]} {
 		if schema == nil || len(schema.Block.Attributes) != 4 {
 			t.Fatalf("%s missing focused Forms schema", kind)
+		}
+	}
+}
+
+func TestScreenTabFieldOrderRegistration(t *testing.T) {
+	server, err := providerserver.NewProtocol6WithError(provider.New("test")())()
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemas, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range schemas.Diagnostics {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			t.Fatal(d)
+		}
+	}
+
+	attribute := func(schema *tfprotov6.Schema, name string) *tfprotov6.SchemaAttribute {
+		for _, attr := range schema.Block.Attributes {
+			if attr.Name == name {
+				return attr
+			}
+		}
+		return nil
+	}
+
+	resourceSchema := schemas.ResourceSchemas["atlassian_jira_screen_tab_field_order"]
+	if resourceSchema == nil {
+		t.Fatal("screen tab field order resource not registered")
+	}
+	for _, name := range []string{"id", "screen_id", "tab_id", "field_ids"} {
+		if attribute(resourceSchema, name) == nil {
+			t.Errorf("resource attribute %q missing", name)
+		}
+	}
+	fieldIDs := attribute(resourceSchema, "field_ids")
+	// field_ids must be a list (ordered), never a set.
+	if _, ok := fieldIDs.Type.(tftypes.List); !ok {
+		t.Errorf("field_ids must be a list, got %s", fieldIDs.Type.String())
+	}
+	if !fieldIDs.Required {
+		t.Error("field_ids must be required")
+	}
+
+	dataSourceSchema := schemas.DataSourceSchemas["atlassian_jira_screen_tab_field_order"]
+	if dataSourceSchema == nil {
+		t.Fatal("screen tab field order data source not registered")
+	}
+	for _, name := range []string{"id", "screen_id", "tab_id", "field_ids"} {
+		if attribute(dataSourceSchema, name) == nil {
+			t.Errorf("data source attribute %q missing", name)
+		}
+	}
+	if dsFieldIDs := attribute(dataSourceSchema, "field_ids"); dsFieldIDs != nil {
+		if _, ok := dsFieldIDs.Type.(tftypes.List); !ok {
+			t.Errorf("data source field_ids must be a list, got %s", dsFieldIDs.Type.String())
 		}
 	}
 }

@@ -106,6 +106,7 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_screen` | Screen |
 | `atlassian_jira_screen_tab` | Screen tab |
 | `atlassian_jira_screen_tab_field` | Screen tab field |
+| `atlassian_jira_screen_tab_field_order` | Declarative order of all fields on a screen tab (membership stays owned by `atlassian_jira_screen_tab_field`) |
 | `atlassian_jira_screen_scheme` | Screen scheme |
 | `atlassian_jira_issue_type_screen_scheme` | Issue type screen scheme |
 | `atlassian_jira_project_issue_type_screen_scheme` | Project ↔ issue type screen scheme association |
@@ -133,6 +134,7 @@ data "atlassian_jira_project" "existing" {
 | `atlassian_jira_workflow` | Look up a workflow by name |
 | `atlassian_jira_workflow_scheme` | Look up a workflow scheme by name |
 | `atlassian_jira_screen` | Look up a screen by name |
+| `atlassian_jira_screen_tab_field_order` | Read a screen tab's current field order |
 | `atlassian_jira_screen_scheme` | Look up a screen scheme by name |
 | `atlassian_jira_issue_type_screen_scheme` | Look up an issue type screen scheme by name |
 | `atlassian_jsm_service_desk` | Discover a service desk from a managed Jira project's ID |

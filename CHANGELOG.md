@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.16](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.15...v0.1.16) (2026-11-18)
+
+
+### Bug Fixes
+
+* expose Jira field scheme validation errors ([d550bf6](https://github.com/veglavas/terraform-provider-atlassian/commit/d550bf6b9a218ff60f92fe6fb8c516f9d3398796))
+* expose Jira field scheme validation errors ([f062de2](https://github.com/veglavas/terraform-provider-atlassian/commit/f062de213e61ee200f74097fe18506a14de1d1b6))
+
 ## [0.1.15](https://github.com/veglavas/terraform-provider-atlassian/compare/v0.1.14...v0.1.15) (2026-10-28)
 
 

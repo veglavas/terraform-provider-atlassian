@@ -253,7 +253,11 @@ func writeFieldRequirement(ctx context.Context, client *atlassian.Client, key fi
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusMultiStatus {
-		return fmt.Errorf("field scheme parameter %s returned HTTP %d", method, resp.StatusCode)
+		details := ""
+		if resp.StatusCode == http.StatusBadRequest {
+			details = fieldSchemeValidationDetails(resp.Body)
+		}
+		return fmt.Errorf("field scheme parameter %s returned HTTP %d (scheme_id=%s, field_id=%s, issue_type_id=%s)%s", method, resp.StatusCode, key.SchemeID, key.FieldID, key.IssueTypeID, details)
 	}
 	if resp.StatusCode == http.StatusNoContent {
 		return nil
